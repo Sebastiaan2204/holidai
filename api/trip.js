@@ -1,230 +1,1646 @@
-export const config = { runtime: 'edge' };
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>holid.ai</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,400;1,9..144,300;1,9..144,400&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet"/>
+<style>
+:root {
+  --sand:#F6F1E9;--sand-mid:#EDE6DA;--sand-dark:#DDD4C4;
+  --ink:#1A1814;--ink-muted:#6B6460;--ink-faint:#AEA8A1;
+  --accent:#E8622A;--accent-dim:#FDF0EB;
+  --teal:#1A8A72;--teal-dim:#E3F5F0;
+  --white:#FFFFFF;
+  --font-d:'Fraunces',serif;--font-b:'DM Sans',sans-serif;
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;-webkit-font-smoothing:antialiased}
+html,body{height:100%;overflow:hidden}
+body{background:var(--sand);font-family:var(--font-b);color:var(--ink);display:flex;flex-direction:column}
 
-const SUPABASE_URL = process.env.SUPABASE_URL;
-const SUPABASE_KEY = process.env.SUPABASE_ANON_KEY;
+header{display:flex;align-items:center;justify-content:space-between;padding:18px 32px;border-bottom:1px solid transparent;background:var(--sand);flex-shrink:0;z-index:50;transition:border-color .2s}
+header.scrolled{border-color:var(--sand-dark)}
+.logo{font-family:var(--font-d);font-size:20px;font-weight:400;font-style:italic}
+.logo b{color:var(--accent);font-weight:400}
+.header-nav{display:flex;align-items:center;gap:24px}
+.header-nav a{font-size:13px;color:var(--ink-muted);text-decoration:none;transition:color .15s}
+.header-nav a:hover{color:var(--ink)}
+.header-sign{font-size:13px;color:var(--ink-muted);cursor:pointer;background:none;border:none;font-family:var(--font-b);transition:color .15s}
+.header-sign:hover{color:var(--ink)}
 
-async function supabase(path, method = 'GET', body = null) {
-  const res = await fetch(`${SUPABASE_URL}/rest/v1/${path}`, {
-    method,
-    headers: {
-      'Content-Type': 'application/json',
-      'apikey': SUPABASE_KEY,
-      'Authorization': `Bearer ${SUPABASE_KEY}`,
-      'Prefer': method === 'POST' ? 'return=representation' : 'return=minimal'
-    },
+/* MAIN LAYOUT, headline → input → conversation (scrolls) */
+.main{flex:1;display:flex;flex-direction:column;overflow:hidden;align-items:stretch}
+
+/* HERO, shrinks once conversation starts */
+.hero{flex-shrink:0;text-align:center;padding:48px 24px 24px;transition:all .4s ease;max-width:660px;margin:0 auto;width:100%}
+.hero.active{padding:20px 24px 16px}
+.hero-eyebrow{font-size:11px;text-transform:uppercase;letter-spacing:.1em;color:var(--ink-faint);font-weight:500;margin-bottom:14px;transition:all .3s}
+.hero.active .hero-eyebrow{opacity:0;height:0;margin:0;overflow:hidden}
+.hero-headline{font-family:var(--font-d);font-size:clamp(24px,4vw,48px);font-weight:300;line-height:1.15;margin-bottom:10px;transition:font-size .35s,margin .35s}
+.hero-headline em{font-style:italic;color:var(--accent)}
+.hero.active .hero-headline{font-size:clamp(16px,2vw,20px);margin-bottom:0}
+.hero-sub{font-size:15px;color:var(--ink-muted);line-height:1.6;max-width:480px;margin:0 auto;transition:all .35s}
+.hero.active .hero-sub{opacity:0;max-height:0;overflow:hidden;margin:0}
+
+/* INPUT ZONE, pinned at bottom */
+
+
+/* CONVERSATION, fills remaining space and scrolls */
+.convo-wrap{flex:1;overflow-y:auto;min-height:0}
+.convo-wrap::-webkit-scrollbar{width:4px}
+.convo-wrap::-webkit-scrollbar-thumb{background:var(--sand-dark);border-radius:4px}
+.convo-inner{max-width:660px;margin:0 auto;padding:0 24px}
+.convo{display:flex;flex-direction:column;padding:20px 0 32px}
+
+.msg-user{display:flex;justify-content:flex-end;margin:16px 0 4px}
+.user-bubble{background:var(--ink);color:var(--white);border-radius:14px 14px 4px 14px;padding:10px 15px;font-size:14px;line-height:1.6;max-width:82%;animation:popIn .18s ease both}
+@keyframes popIn{from{opacity:0;transform:scale(.96) translateY(4px)}to{opacity:1;transform:scale(1) translateY(0)}}
+.msg-ai{display:flex;align-items:flex-start;gap:10px;margin:16px 0 4px}
+.ai-av{width:28px;height:28px;border-radius:50%;background:var(--ink);display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:2px}
+.ai-av svg{width:13px;height:13px}
+.ai-body{flex:1;animation:fadeUp .2s ease both}
+@keyframes fadeUp{from{opacity:0;transform:translateY(5px)}to{opacity:1;transform:translateY(0)}}
+.ai-label{font-size:10px;font-weight:500;color:var(--ink-faint);text-transform:uppercase;letter-spacing:.07em;margin-bottom:5px}
+.ai-text{font-size:14px;line-height:1.75;color:var(--ink)}
+.ai-text p{margin-bottom:7px}
+.ai-text p:last-child{margin-bottom:0}
+.typing-wrap{display:flex;align-items:flex-start;gap:10px;margin:16px 0 4px}
+.tdots{display:flex;gap:4px;padding:5px 2px}
+.td{width:5px;height:5px;border-radius:50%;background:var(--ink-faint);animation:tdB .8s infinite}
+.td:nth-child(2){animation-delay:.13s}.td:nth-child(3){animation-delay:.26s}
+@keyframes tdB{0%,60%,100%{transform:translateY(0)}30%{transform:translateY(-4px)}}
+
+/* CARDS */
+.cards{display:flex;gap:9px;flex-wrap:wrap;margin-top:12px}
+.w-chip{flex:1;min-width:140px;background:var(--white);border:1.5px solid var(--sand-dark);border-radius:13px;padding:13px 15px;cursor:pointer;transition:all .15s}
+.w-chip:hover,.w-chip.sel{border-color:var(--accent);background:var(--accent-dim)}
+.wc-date{font-family:var(--font-d);font-size:14px;font-weight:400}
+.wc-meta{font-size:11px;color:var(--ink-muted);margin-top:2px}
+.wc-price{font-size:11px;font-weight:500;margin-top:7px}
+.ok{color:var(--teal)}.warn{color:#A0700A}
+.d-chip{flex:1;min-width:110px;background:var(--white);border:1.5px solid var(--sand-dark);border-radius:13px;padding:13px 15px;cursor:pointer;transition:all .15s}
+.d-chip:hover,.d-chip.sel{border-color:var(--accent);background:var(--accent-dim)}
+.dc-flag{font-size:22px;margin-bottom:7px}
+.dc-name{font-family:var(--font-d);font-size:13px;font-weight:400}
+.dc-price{font-size:11px;color:var(--ink-muted);margin-top:2px}
+.dc-score{font-size:10px;font-weight:500;color:var(--teal);margin-top:5px}
+.trip-card{background:var(--ink);color:var(--white);border-radius:14px;padding:18px 20px;margin-top:12px;width:100%}
+.tc-dest{font-family:var(--font-d);font-size:22px;font-weight:300;font-style:italic}
+.tc-dates{font-size:12px;color:rgba(255,255,255,.4);margin-top:2px;margin-bottom:14px}
+.tc-row{display:flex;justify-content:space-between;font-size:13px;padding:7px 0;border-bottom:1px solid rgba(255,255,255,.07)}
+.tc-row:last-child{border-bottom:none}
+.tc-l{color:rgba(255,255,255,.45)}.tc-v{font-weight:500}
+.tc-total{font-family:var(--font-d);font-size:20px;font-weight:300;color:var(--accent)}
+.sugs{display:flex;gap:7px;flex-wrap:wrap;margin-top:12px}
+.sug{background:var(--white);border:1px solid var(--sand-dark);border-radius:20px;padding:7px 14px;font-family:var(--font-b);font-size:12px;color:var(--ink-muted);cursor:pointer;transition:all .15s;white-space:nowrap}
+.sug:hover{border-color:var(--accent);color:var(--accent);background:var(--accent-dim)}
+
+/* TRIP ROOM CARD */
+.room-card{background:var(--white);border:1.5px solid var(--sand-dark);border-radius:14px;padding:20px;margin-top:12px;width:100%}
+.room-header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:16px}
+.room-title{font-family:var(--font-d);font-size:18px;font-weight:400}
+.room-sub{font-size:12px;color:var(--ink-muted);margin-top:2px}
+.room-badge{font-size:11px;font-weight:500;padding:4px 10px;border-radius:20px;background:var(--teal-dim);color:var(--teal);white-space:nowrap}
+.room-link-box{display:flex;align-items:center;gap:8px;background:var(--sand);border:1px solid var(--sand-dark);border-radius:9px;padding:10px 12px;margin-bottom:14px}
+.room-link-text{font-size:12px;color:var(--ink-muted);flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-family:monospace}
+.copy-btn{font-size:11px;font-weight:500;color:var(--accent);background:none;border:none;cursor:pointer;white-space:nowrap;font-family:var(--font-b);padding:0;transition:opacity .15s}
+.copy-btn:hover{opacity:.7}
+.member-row{display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--sand)}
+.member-row:last-child{border-bottom:none}
+.m-av{width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:500;flex-shrink:0}
+.m-name{flex:1;font-size:13px}
+.m-status{font-size:11px;font-weight:500;padding:3px 8px;border-radius:20px}
+.ms-done{background:var(--teal-dim);color:var(--teal)}
+.ms-wait{background:var(--sand-mid);color:var(--ink-muted)}
+.ms-you{background:var(--accent-dim);color:var(--accent)}
+.upload-area{border:1.5px dashed var(--sand-dark);border-radius:11px;padding:20px;text-align:center;cursor:pointer;transition:all .15s;margin-top:12px;position:relative}
+.upload-area:hover{border-color:var(--accent);background:var(--accent-dim)}
+.upload-area input{position:absolute;inset:0;opacity:0;cursor:pointer;width:100%;height:100%}
+.upload-icon{width:32px;height:32px;border-radius:50%;background:var(--sand);display:flex;align-items:center;justify-content:center;margin:0 auto 8px}
+.upload-title{font-size:13px;font-weight:500;margin-bottom:3px}
+.upload-sub{font-size:11px;color:var(--ink-muted)}
+.result-box{background:var(--sand);border-radius:11px;padding:14px 16px;margin-top:12px}
+.result-label{font-size:10px;text-transform:uppercase;letter-spacing:.08em;color:var(--ink-faint);font-weight:500;margin-bottom:10px}
+.free-window{display:flex;align-items:center;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--sand-dark)}
+.free-window:last-child{border-bottom:none}
+.fw-dates{font-family:var(--font-d);font-size:13px;font-weight:400}
+.fw-nights{font-size:11px;color:var(--ink-muted);margin-top:1px}
+.fw-badge{font-size:11px;font-weight:500;padding:3px 8px;border-radius:20px}
+
+/* MODAL */
+.modal-bg{display:none;position:fixed;inset:0;background:rgba(26,24,20,.45);z-index:100;align-items:center;justify-content:center}
+.modal-bg.open{display:flex}
+.modal{background:var(--white);border-radius:18px;padding:26px 26px 22px;width:100%;max-width:360px;margin:20px;animation:popIn .2s ease}
+.modal-title{font-family:var(--font-d);font-size:19px;font-weight:400;margin-bottom:5px}
+.modal-sub{font-size:13px;color:var(--ink-muted);margin-bottom:20px;line-height:1.6}
+.cal-opt{display:flex;align-items:center;gap:12px;padding:12px 14px;border:1.5px solid var(--sand-dark);border-radius:11px;margin-bottom:9px;cursor:pointer;transition:all .15s}
+.cal-opt:hover{border-color:var(--accent);background:var(--accent-dim)}
+.cal-opt.done{border-color:var(--teal);background:var(--teal-dim)}
+.cal-opt-icon{width:34px;height:34px;border-radius:8px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.cal-opt-name{font-size:13px;font-weight:500}
+.cal-opt-sub{font-size:11px;color:var(--ink-muted);margin-top:1px}
+.modal-close{width:100%;padding:12px;border-radius:10px;background:var(--ink);color:var(--white);border:none;font-family:var(--font-b);font-size:13px;font-weight:500;cursor:pointer;margin-top:4px;transition:opacity .15s}
+.modal-close:hover{opacity:.85}
+
+/* PRIVACY PANEL */
+.priv-bg{display:none;position:fixed;inset:0;background:rgba(26,24,20,.5);z-index:200;align-items:flex-start;justify-content:flex-end}
+.priv-bg.open{display:flex}
+.priv-panel{background:var(--white);width:100%;max-width:440px;height:100vh;overflow-y:auto;animation:slideIn .25s ease}
+@keyframes slideIn{from{transform:translateX(100%);opacity:0}to{transform:translateX(0);opacity:1}}
+.priv-header{display:flex;align-items:center;justify-content:space-between;padding:20px 26px;border-bottom:1px solid var(--sand-mid);position:sticky;top:0;background:var(--white);z-index:1}
+.priv-title{font-family:var(--font-d);font-size:17px;font-weight:400}
+.priv-close{width:30px;height:30px;border-radius:50%;background:var(--sand);border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:14px;color:var(--ink-muted)}
+.priv-close:hover{background:var(--sand-dark)}
+.priv-body{padding:24px 26px}
+.p-sec{margin-bottom:28px}
+.p-lbl{font-size:10px;text-transform:uppercase;letter-spacing:.08em;color:var(--ink-faint);font-weight:500;margin-bottom:12px}
+.p-row{display:flex;gap:12px;align-items:flex-start;padding:10px 0;border-bottom:1px solid var(--sand)}
+.p-row:last-child{border-bottom:none}
+.p-icon{width:26px;height:26px;border-radius:7px;flex-shrink:0;display:flex;align-items:center;justify-content:center;margin-top:1px}
+.p-icon.ok{background:var(--teal-dim)}.p-icon.no{background:#FEF3F0}
+.p-row-title{font-size:13px;font-weight:500;margin-bottom:2px}
+.p-row-body{font-size:12px;color:var(--ink-muted);line-height:1.6}
+.p-note{background:var(--sand);border-radius:10px;padding:14px 16px;font-size:12px;color:var(--ink-muted);line-height:1.7;margin-top:6px}
+
+/* PEOPLE PICKER */
+.people-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:14px}
+.people-card{background:var(--white);border:1.5px solid var(--sand-dark);border-radius:14px;padding:14px 8px 12px;cursor:pointer;text-align:center;transition:all .15s;display:flex;flex-direction:column;align-items:center;gap:6px}
+.people-card:hover{border-color:var(--accent);background:var(--accent-dim);transform:translateY(-2px)}
+.pc-icons{display:flex;align-items:center;justify-content:center;height:28px}
+.pc-av{width:22px;height:22px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:8px;font-weight:500;flex-shrink:0;border:1.5px solid var(--sand)}
+.pc-num{font-family:var(--font-d);font-size:20px;font-weight:300;line-height:1;color:var(--ink)}
+.pc-label{font-size:10px;color:var(--ink-muted);line-height:1.3}
+@media(max-width:400px){.people-grid{grid-template-columns:repeat(2,1fr)}}
+
+
+/* BUDGET VIBE PICKER */
+.vibe-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:14px}
+.vibe-card{background:var(--white);border:1.5px solid var(--sand-dark);border-radius:14px;padding:16px 12px 14px;cursor:pointer;text-align:center;transition:all .15s;display:flex;flex-direction:column;align-items:center;gap:6px}
+.vibe-card:hover{border-color:var(--accent);background:var(--accent-dim);transform:translateY(-2px)}
+.vc-emoji{font-size:24px;line-height:1}
+.vc-title{font-size:13px;font-weight:500;color:var(--ink)}
+.vc-sub{font-size:11px;color:var(--ink-muted);line-height:1.5}
+@media(max-width:400px){.vibe-grid{grid-template-columns:1fr}}
+
+/* BOOKING CARDS */
+.booking-stack{display:flex;flex-direction:column;gap:10px;margin-top:12px}
+.booking-card{background:var(--white);border:1.5px solid var(--sand-dark);border-radius:14px;padding:14px 16px;display:flex;align-items:center;justify-content:space-between;gap:12px;transition:border-color .15s}
+.booking-card:hover{border-color:var(--sand-dark)}
+.booking-card-hi{border-color:var(--accent)}
+.bc-left{display:flex;align-items:center;gap:12px;flex:1;min-width:0}
+.bc-icon{font-size:22px;flex-shrink:0;width:36px;height:36px;display:flex;align-items:center;justify-content:center;background:var(--sand);border-radius:10px}
+.bc-provider{font-size:10px;text-transform:uppercase;letter-spacing:.07em;color:var(--ink-faint);font-weight:500;margin-bottom:2px}
+.bc-label{font-size:13px;font-weight:500;color:var(--ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.bc-sub{font-size:11px;color:var(--ink-muted);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.bc-cta{flex-shrink:0;background:var(--ink);color:var(--white);border-radius:9px;padding:8px 13px;font-size:12px;font-weight:500;text-decoration:none;white-space:nowrap;transition:opacity .15s}
+.bc-cta:hover{opacity:.8}
+.booking-card-hi .bc-cta{background:var(--accent)}
+
+/* INLINE CITY INPUT */
+.inline-input-wrap{display:flex;gap:8px;margin-top:12px;align-items:center}
+.inline-input{flex:1;background:var(--white);border:1.5px solid var(--sand-dark);border-radius:12px;padding:11px 14px;font-family:var(--font-b);font-size:14px;color:var(--ink);outline:none;transition:border-color .2s}
+.inline-input:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(232,98,42,.07)}
+.inline-input::placeholder{color:var(--ink-faint)}
+.inline-send{background:var(--accent);color:var(--white);border:none;border-radius:10px;padding:11px 16px;font-family:var(--font-b);font-size:13px;font-weight:500;cursor:pointer;white-space:nowrap;transition:opacity .15s;flex-shrink:0}
+.inline-send:hover{opacity:.85}
+
+/* FLIGHT PREVIEW CARD */
+.preview-card{background:var(--white);border:1.5px solid var(--accent);border-radius:14px;padding:16px;margin-top:12px}
+.pc-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px}
+.pc-provider-badge{font-size:12px;font-weight:500;color:var(--ink)}
+.pc-live-badge{font-size:10px;font-weight:500;background:var(--teal-dim);color:var(--teal);padding:3px 8px;border-radius:20px}
+.pc-route{font-family:var(--font-d);font-size:17px;font-weight:400;margin-bottom:3px}
+.pc-detail{font-size:11px;color:var(--ink-muted);margin-bottom:12px}
+.pc-airlines{display:flex;flex-direction:column;gap:1px;margin-bottom:12px;border:1px solid var(--sand-dark);border-radius:10px;overflow:hidden}
+.pc-airline{display:flex;align-items:center;gap:10px;padding:10px 12px;background:var(--sand)}
+.pc-airline-mid{background:var(--white)}
+.pc-airline-logo{width:30px;height:30px;border-radius:8px;background:#ff6600;color:white;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;flex-shrink:0}
+.pc-airline-info{flex:1}
+.pc-airline-name{font-size:13px;font-weight:500}
+.pc-airline-route{font-size:11px;color:var(--ink-muted);margin-top:1px}
+.pc-airline-price{font-size:13px;font-weight:500;color:var(--teal);white-space:nowrap}
+.pc-search-btn{display:block;text-align:center;background:var(--accent);color:var(--white);border-radius:10px;padding:10px;font-size:13px;font-weight:500;text-decoration:none;transition:opacity .15s}
+.pc-search-btn:hover{opacity:.85}
+
+/* MODE PICKER */
+.mode-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:14px;margin-bottom:4px}
+.mode-card{background:var(--white);border:1.5px solid var(--sand-dark);border-radius:14px;padding:18px 14px 16px;cursor:pointer;text-align:center;transition:all .15s;display:flex;flex-direction:column;align-items:center;gap:8px}
+.mode-card:hover{border-color:var(--accent);background:var(--accent-dim);transform:translateY(-2px)}
+.mode-icon{font-size:28px;line-height:1}
+.mode-title{font-size:13px;font-weight:500;color:var(--ink);line-height:1.3}
+.mode-sub{font-size:11px;color:var(--ink-muted);line-height:1.5}
+@media(max-width:400px){.mode-grid{grid-template-columns:1fr}}
+
+/* CALENDAR CONNECT CARD */
+.cal-connect-card{display:flex;align-items:center;gap:12px;background:var(--white);border:1.5px solid var(--accent);border-radius:14px;padding:14px 16px;margin-top:12px}
+.cal-connect-icon{font-size:24px;flex-shrink:0}
+.cal-connect-text{flex:1}
+.cal-connect-title{font-size:14px;font-weight:500;color:var(--ink)}
+.cal-connect-sub{font-size:11px;color:var(--ink-muted);margin-top:2px}
+.cal-connect-btn{background:var(--accent);color:var(--white);border:none;border-radius:9px;padding:9px 18px;font-family:var(--font-b);font-size:13px;font-weight:500;cursor:pointer;white-space:nowrap;transition:opacity .15s;flex-shrink:0}
+.cal-connect-btn:hover{opacity:.85}
+.sug-lg{padding:10px 18px;font-size:13px}
+
+/* FLOATING CHAT ASSISTANT */
+.chat-fab{position:fixed;bottom:24px;right:24px;z-index:500;background:var(--accent);border-radius:30px;padding:12px 18px 12px 14px;display:flex;align-items:center;gap:8px;cursor:pointer;box-shadow:0 4px 16px rgba(232,98,42,.35);transition:all .2s}
+.chat-fab:hover{transform:translateY(-2px)}
+.chat-fab-label{color:white;font-size:13px;font-weight:500;white-space:nowrap}
+.assistant-panel{position:fixed;bottom:84px;right:24px;z-index:499;width:320px;background:var(--white);border-radius:18px;border:1px solid var(--sand-dark);display:flex;flex-direction:column;overflow:hidden;transform:scale(.95) translateY(10px);opacity:0;pointer-events:none;transition:all .2s ease;max-height:440px}
+.assistant-panel.open{transform:scale(1) translateY(0);opacity:1;pointer-events:all}
+.ap-header{display:flex;align-items:center;justify-content:space-between;padding:14px 16px;border-bottom:1px solid var(--sand-mid);flex-shrink:0}
+.ap-title{font-size:14px;font-weight:500}
+.ap-sub{font-size:11px;color:var(--ink-muted);margin-top:1px}
+.ap-close{background:none;border:none;font-size:14px;color:var(--ink-muted);cursor:pointer;width:24px;height:24px;display:flex;align-items:center;justify-content:center;border-radius:50%;transition:background .15s}
+.ap-close:hover{background:var(--sand)}
+.ap-messages{flex:1;overflow-y:auto;padding:14px 14px 8px;display:flex;flex-direction:column;gap:8px}
+.ap-messages::-webkit-scrollbar{width:3px}
+.ap-messages::-webkit-scrollbar-thumb{background:var(--sand-dark);border-radius:3px}
+.ap-msg-ai .ap-bubble{background:var(--sand);border-radius:4px 12px 12px 12px;padding:9px 12px;font-size:13px;line-height:1.6;color:var(--ink);max-width:90%}
+.ap-msg-user{display:flex;justify-content:flex-end}
+.ap-msg-user .ap-bubble{background:var(--ink);color:white;border-radius:12px 12px 4px 12px;padding:9px 12px;font-size:13px;line-height:1.6;max-width:90%}
+.ap-input-row{display:flex;gap:8px;padding:10px 12px 12px;border-top:1px solid var(--sand-mid);flex-shrink:0}
+.ap-input{flex:1;background:var(--sand);border:1px solid var(--sand-dark);border-radius:10px;padding:9px 12px;font-family:var(--font-b);font-size:13px;color:var(--ink);outline:none;transition:border-color .15s}
+.ap-input:focus{border-color:var(--accent)}
+.ap-input::placeholder{color:var(--ink-faint)}
+.ap-send{width:34px;height:34px;border-radius:9px;background:var(--accent);border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:opacity .15s}
+.ap-send:hover{opacity:.85}
+@media(max-width:400px){.assistant-panel{width:calc(100vw - 48px);right:24px}}
+
+/* ── CALENDAR STATUS CARD ── */
+.cal-status-card{
+  max-width:660px;margin:0 auto;padding:0 24px 12px;
+  transition:opacity .3s;
+}
+.csc-inner{
+  background:var(--white);border-radius:var(--radius-lg, 14px);
+  border:1.5px solid var(--accent);padding:16px 18px;
+}
+.csc-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}
+.csc-title{font-size:13px;font-weight:500;color:var(--ink)}
+.csc-subtitle{font-size:11px;color:var(--ink-muted);margin-top:2px}
+.csc-badge{font-size:11px;font-weight:500;padding:3px 10px;border-radius:20px;background:var(--teal-dim);color:var(--teal)}
+.csc-members{display:flex;flex-direction:column;gap:6px;margin-bottom:14px}
+.csc-member{display:flex;align-items:center;gap:10px}
+.csc-av{width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:500;flex-shrink:0}
+.csc-name{flex:1;font-size:13px;font-weight:500}
+.csc-status{font-size:11px;font-weight:500;padding:2px 9px;border-radius:20px}
+.csc-connected{background:var(--teal-dim);color:var(--teal)}
+.csc-waiting{background:var(--sand-mid);color:var(--ink-muted)}
+.csc-you{background:var(--accent-dim);color:var(--accent)}
+.csc-actions{display:flex;gap:8px}
+.csc-connect-btn{flex:1;padding:10px;background:var(--accent);color:var(--white);border:none;border-radius:10px;font-family:var(--font-b);font-size:13px;font-weight:500;cursor:pointer;transition:opacity .15s}
+.csc-connect-btn:hover{opacity:.85}
+.csc-connect-btn.connected{background:var(--teal);cursor:default}
+.csc-share-btn{padding:10px 14px;background:var(--sand);border:1px solid var(--sand-dark);border-radius:10px;font-family:var(--font-b);font-size:13px;font-weight:500;color:var(--ink-muted);cursor:pointer;white-space:nowrap;transition:all .15s}
+.csc-share-btn:hover{border-color:var(--ink-faint);color:var(--ink)}
+.csc-privacy{font-size:11px;color:var(--ink-faint);text-align:center;margin-top:10px}
+.csc-privacy a{color:var(--ink-muted);text-decoration:none}
+.csc-privacy a:hover{color:var(--accent)}
+
+/* ── COLLAPSIBLE CAL CARD ── */
+.csc-collapsed{display:flex;align-items:center;justify-content:space-between;cursor:pointer;padding:2px 0;user-select:none}
+.csc-collapsed-left{display:flex;align-items:center;gap:10px}
+.csc-dot{width:8px;height:8px;border-radius:50%;background:var(--sand-dark);flex-shrink:0;transition:background .3s}
+.csc-dot.active{background:var(--teal)}
+.csc-collapsed-text{display:flex;align-items:baseline;gap:0;flex-wrap:wrap}
+.csc-collapsed-sub{font-size:12px;color:var(--ink-muted)}
+.csc-collapsed-right{display:flex;align-items:center;gap:8px}
+.csc-chevron{font-size:16px;color:var(--ink-muted);transition:transform .25s;line-height:1}
+.csc-chevron.open{transform:rotate(90deg)}
+.csc-expanded{overflow:hidden;max-height:0;transition:max-height .3s ease;opacity:0;transition:max-height .3s ease, opacity .2s ease}
+.csc-expanded.open{max-height:400px;opacity:1}
+.csc-divider{height:1px;background:var(--sand-mid);margin:12px 0}
+
+/* PLAN DIVIDER */
+.plan-divider{display:flex;align-items:center;gap:12px;padding:20px 0 4px}
+.plan-divider-line{flex:1;height:1px;background:var(--sand-dark)}
+.plan-divider-label{font-size:11px;text-transform:uppercase;letter-spacing:.1em;color:var(--ink-faint);font-weight:500;white-space:nowrap}
+</style>
+</head>
+<body>
+
+<header id="hdr">
+  <div class="logo">holid<b>.</b>ai</div>
+  <nav class="header-nav">
+    <a href="#">How it works</a>
+    <a href="#">Pricing</a>
+    <a href="#" onclick="openPriv();return false">Privacy</a>
+    <button class="header-sign">Sign in</button>
+  </nav>
+</header>
+
+<div class="main" id="main">
+
+  <!-- 1. HEADLINE, always at top, shrinks once chat starts -->
+  <div class="hero" id="hero">
+    <div class="hero-eyebrow">AI-powered group travel planning</div>
+    <h1 class="hero-headline">Finally getting that trip<br><em>out of the group chat.</em></h1>
+    <p class="hero-sub">Sync everyone's calendars, find when you're all free, and get the cheapest flights and accommodation, in one conversation.</p>
+  </div>
+
+  <!-- 2. CALENDAR STATUS CARD, collapsible -->
+  <div class="cal-status-card" id="cal-status-card">
+    <div class="csc-inner">
+
+      <!-- COLLAPSED ROW, always visible, tap to expand -->
+      <div class="csc-collapsed" id="csc-collapsed" onclick="toggleCalCard()">
+        <div class="csc-collapsed-left">
+          <div class="csc-dot" id="csc-dot"></div>
+          <div class="csc-collapsed-text">
+            <span class="csc-title">Group calendars</span>
+            <span class="csc-collapsed-sub" id="csc-collapsed-sub">, tap to connect</span>
+          </div>
+        </div>
+        <div class="csc-collapsed-right">
+          <div class="csc-badge" id="csc-badge">0 / 1</div>
+          <div class="csc-chevron" id="csc-chevron">›</div>
+        </div>
+      </div>
+
+      <!-- EXPANDED CONTENT, hidden by default -->
+      <div class="csc-expanded" id="csc-expanded">
+        <div class="csc-divider"></div>
+        <div class="csc-members" id="csc-members">
+          <div class="csc-member">
+            <div class="csc-av" style="background:var(--accent-dim);color:var(--accent)">You</div>
+            <div class="csc-name">You</div>
+            <div class="csc-status csc-waiting" id="csc-you-status">Not connected</div>
+          </div>
+        </div>
+        <div class="csc-actions">
+          <button class="csc-connect-btn" id="csc-connect-btn" onclick="openCalModal()">Connect your calendar</button>
+          <button class="csc-share-btn" id="csc-share-btn" onclick="shareCalLink()">Invite friends</button>
+        </div>
+        <div class="csc-privacy">We only see busy/free, never your event titles. <a href="#" onclick="openPriv();return false">Learn more →</a></div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- 3. CONVERSATION, people picker + all messages appear here -->
+  <div class="convo-wrap" id="convo-wrap">
+    <div class="convo-inner">
+      <div class="plan-divider">
+        <div class="plan-divider-line"></div>
+        <div class="plan-divider-label">Let's plan your trip</div>
+        <div class="plan-divider-line"></div>
+      </div>
+      <div class="convo" id="convo"></div>
+    </div>
+  </div>
+
+
+
+</div>
+
+<!-- CAL MODAL -->
+<div class="modal-bg" id="cal-modal" onclick="closeCalModal(event)">
+  <div class="modal">
+    <div class="modal-title">Connect calendars</div>
+    <div class="modal-sub">We only read busy/free blocks, your event titles are never visible to us or your friends.</div>
+    <div class="cal-opt" id="co-google" onclick="connectCal('google')">
+      <div class="cal-opt-icon" style="background:#FEF3F0"><svg width="18" height="18" viewBox="0 0 20 20"><rect x="3" y="3" width="14" height="14" rx="2" fill="#EA4335"/><path d="M7 10h6M10 7v6" stroke="white" stroke-width="1.5" stroke-linecap="round"/></svg></div>
+      <div><div class="cal-opt-name">Google Calendar</div><div class="cal-opt-sub" id="cs-google">Connect with Google</div></div>
+    </div>
+    <div class="cal-opt" id="co-apple" onclick="connectCal('apple')">
+      <div class="cal-opt-icon" style="background:#F0F4FF"><svg width="18" height="18" viewBox="0 0 20 20"><rect x="3" y="3" width="14" height="14" rx="2" fill="#3478F6"/><circle cx="10" cy="10" r="3" fill="white"/></svg></div>
+      <div><div class="cal-opt-name">Apple Calendar</div><div class="cal-opt-sub" id="cs-apple">Connect with Apple ID</div></div>
+    </div>
+    <div class="cal-opt" id="co-outlook" onclick="connectCal('outlook')">
+      <div class="cal-opt-icon" style="background:#F0F8FF"><svg width="18" height="18" viewBox="0 0 20 20"><rect x="3" y="3" width="14" height="14" rx="2" fill="#0078D4"/><path d="M7 10h6M10 7v6" stroke="white" stroke-width="1.2" stroke-linecap="round"/></svg></div>
+      <div><div class="cal-opt-name">Outlook</div><div class="cal-opt-sub" id="cs-outlook">Connect with Microsoft</div></div>
+    </div>
+    <button class="modal-close" onclick="closeCalModal()">Done</button>
+  </div>
+</div>
+
+<!-- PRIVACY PANEL -->
+<div class="priv-bg" id="priv-bg" onclick="closePriv(event)">
+  <div class="priv-panel">
+    <div class="priv-header">
+      <div class="priv-title">What we do with your calendar</div>
+      <button class="priv-close" onclick="closePriv()">✕</button>
+    </div>
+    <div class="priv-body">
+      <div class="p-sec">
+        <div class="p-lbl">What we read</div>
+        <div class="p-row"><div class="p-icon ok"><svg width="13" height="13" viewBox="0 0 14 14" fill="none"><path d="M2 7L6 11L12 3" stroke="#1A8A72" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></div><div><div class="p-row-title">Busy / free blocks only</div><div class="p-row-body">We see whether a time slot is marked as busy or free. Nothing else.</div></div></div>
+        <div class="p-row"><div class="p-icon ok"><svg width="13" height="13" viewBox="0 0 14 14" fill="none"><path d="M2 7L6 11L12 3" stroke="#1A8A72" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></div><div><div class="p-row-title">Date and time of blocks</div><div class="p-row-body">We need to know when you're unavailable to find windows where the whole group is free.</div></div></div>
+      </div>
+      <div class="p-sec">
+        <div class="p-lbl">What we never read</div>
+        <div class="p-row"><div class="p-icon no"><svg width="13" height="13" viewBox="0 0 14 14" fill="none"><path d="M3 3L11 11M11 3L3 11" stroke="#E8622A" stroke-width="1.5" stroke-linecap="round"/></svg></div><div><div class="p-row-title">Event titles</div><div class="p-row-body">"Doctor appointment", "Job interview", "Therapy", we never see any of this.</div></div></div>
+        <div class="p-row"><div class="p-icon no"><svg width="13" height="13" viewBox="0 0 14 14" fill="none"><path d="M3 3L11 11M11 3L3 11" stroke="#E8622A" stroke-width="1.5" stroke-linecap="round"/></svg></div><div><div class="p-row-title">Event descriptions or notes</div><div class="p-row-body">Any text you've added to a calendar event is not accessed.</div></div></div>
+        <div class="p-row"><div class="p-icon no"><svg width="13" height="13" viewBox="0 0 14 14" fill="none"><path d="M3 3L11 11M11 3L3 11" stroke="#E8622A" stroke-width="1.5" stroke-linecap="round"/></svg></div><div><div class="p-row-title">Who the event is with</div><div class="p-row-body">Guest lists, attendees, organisers, none of this is read or stored.</div></div></div>
+      </div>
+      <div class="p-sec">
+        <div class="p-lbl">What we do with the data</div>
+        <div class="p-row"><div class="p-icon ok"><svg width="13" height="13" viewBox="0 0 14 14" fill="none"><path d="M2 7L6 11L12 3" stroke="#1A8A72" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></div><div><div class="p-row-title">Find overlapping free windows</div><div class="p-row-body">We compare busy/free blocks across your group to find dates when everyone is available. That's the only computation we run.</div></div></div>
+        <div class="p-row"><div class="p-icon no"><svg width="13" height="13" viewBox="0 0 14 14" fill="none"><path d="M3 3L11 11M11 3L3 11" stroke="#E8622A" stroke-width="1.5" stroke-linecap="round"/></svg></div><div><div class="p-row-title">We never sell calendar data</div><div class="p-row-body">Your availability is never shared with advertisers, data brokers, or any third party.</div></div></div>
+        <div class="p-row"><div class="p-icon no"><svg width="13" height="13" viewBox="0 0 14 14" fill="none"><path d="M3 3L11 11M11 3L3 11" stroke="#E8622A" stroke-width="1.5" stroke-linecap="round"/></svg></div><div><div class="p-row-title">We never store raw calendar data</div><div class="p-row-body">We store only the computed free windows, not the underlying events. Disconnect anytime.</div></div></div>
+      </div>
+      <div class="p-note">holid.ai uses standard OAuth, the same authentication used by Calendly, Notion, and Zoom. You grant read-only access and can revoke it anytime from your Google, Apple, or Microsoft account settings.</div>
+    </div>
+  </div>
+</div>
+
+<script>
+const heroEl   = document.getElementById('hero');
+const convoEl  = document.getElementById('convo');
+const mainEl   = document.getElementById('main');
+let step = 0, calConnected = false, currentRoom = null;
+
+// ── INPUT (tap-only, no free text bar) ──
+
+// ── MESSAGES ──
+function submit(text){
+  heroEl.classList.add('active');
+  addUser(text);
+  inputEl.value=''; inputEl.style.height='auto'; sendBtn.classList.remove('ready');
+  showTyping();
+  setTimeout(()=>{ removeTyping(); respond(text); }, 900+Math.random()*400);
+}
+
+function addUser(t){
+  const d=document.createElement('div'); d.className='msg-user';
+  d.innerHTML=`<div class="user-bubble">${esc(t)}</div>`;
+  convoEl.appendChild(d); scrollD();
+}
+function addAI(html){
+  const d=document.createElement('div'); d.className='msg-ai';
+  d.innerHTML=`<div class="ai-av">${aiSvg()}</div><div class="ai-body"><div class="ai-label">holid.ai</div><div class="ai-text">${html}</div></div>`;
+  convoEl.appendChild(d); scrollD(); return d.querySelector('.ai-text');
+}
+
+function lockChoices(){
+  // Disable all tappable choices in the conversation so they can't be spammed
+  convoEl.querySelectorAll('.sug,.people-card,.vibe-card,.mode-card,.w-chip,.d-chip,.cal-connect-btn').forEach(el=>{
+    el.style.pointerEvents='none';
+    el.style.opacity=el.classList.contains('sel')?'1':'0.4';
+  });
+}
+function showTyping(){
+  const d=document.createElement('div'); d.className='typing-wrap'; d.id='typing';
+  d.innerHTML=`<div class="ai-av">${aiSvg()}</div><div class="tdots"><div class="td"></div><div class="td"></div><div class="td"></div></div>`;
+  convoEl.appendChild(d); scrollD();
+}
+function removeTyping(){ const t=document.getElementById('typing'); if(t) t.remove(); }
+function scrollD(){ setTimeout(()=>{ const cw=document.getElementById('convo-wrap'); if(cw) cw.scrollTop=cw.scrollHeight; },80); }
+function esc(t){ return t.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+function aiSvg(){ return `<svg viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="2.5" fill="white"/><circle cx="8" cy="2.5" r="1.1" fill="white" opacity=".4"/><circle cx="8" cy="13.5" r="1.1" fill="white" opacity=".4"/><circle cx="2.5" cy="8" r="1.1" fill="white" opacity=".4"/><circle cx="13.5" cy="8" r="1.1" fill="white" opacity=".4"/></svg>`; }
+
+// ── MODALS ──
+function openCalModal(){ document.getElementById('cal-modal').classList.add('open'); }
+function closeCalModal(e){ if(!e||e.target===document.getElementById('cal-modal')) document.getElementById('cal-modal').classList.remove('open'); }
+function connectCal(type){
+  document.getElementById('co-'+type).classList.add('done');
+  document.getElementById('cs-'+type).textContent='Connected ✓';
+  if(!calConnected){
+    calConnected=true;
+    // Update the status card
+    const youStatus = document.getElementById('csc-you-status');
+    if(youStatus){ youStatus.textContent='Connected ✓'; youStatus.className='csc-status csc-connected'; }
+    const connectBtn = document.getElementById('csc-connect-btn');
+    if(connectBtn){ connectBtn.textContent='Calendar connected ✓'; connectBtn.classList.add('connected'); }
+    const dot = document.getElementById('csc-dot');
+    if(dot) dot.classList.add('active');
+    const sub = document.getElementById('csc-collapsed-sub');
+    if(sub) sub.textContent = ', your calendar connected';
+    updateCalBadge();
+  }
+}
+
+function updateCalBadge(){
+  const members = document.querySelectorAll('#csc-members .csc-member');
+  const connected = document.querySelectorAll('#csc-members .csc-connected').length;
+  const badge = document.getElementById('csc-badge');
+  if(badge) badge.textContent = `${connected} / ${members.length} connected`;
+  if(connected === members.length && members.length > 1){
+    badge.style.background='var(--teal-dim)';
+    badge.style.color='var(--teal)';
+  }
+}
+
+function shareCalLink(){
+  // Build share link and copy to clipboard
+  const people = trip.people || 4;
+  const code = Math.random().toString(36).substr(2,6).toUpperCase();
+  const link = `${window.location.origin}/room.html?code=${code}`;
+
+  // Add friend placeholders to the card
+  const membersEl = document.getElementById('csc-members');
+  if(membersEl && membersEl.querySelectorAll('.csc-member').length === 1){
+    const colors = [
+      {bg:'#E3F5F0',col:'#1A8A72',init:'S'},
+      {bg:'#EEECFB',col:'#4A3FBF',init:'J'},
+      {bg:'#FBF4E3',col:'#8A6400',init:'L'},
+      {bg:'var(--sand-dark)',col:'var(--ink-muted)',init:'+'},
+    ];
+    const count = Math.min((people||4)-1, 4);
+    const names = ['Friend 1','Friend 2','Friend 3','Friend 4'];
+    for(let i=0;i<count;i++){
+      const c = colors[i] || colors[3];
+      const row = document.createElement('div');
+      row.className='csc-member';
+      row.innerHTML=`<div class="csc-av" style="background:${c.bg};color:${c.col}">${c.init}</div><div class="csc-name">${names[i]}</div><div class="csc-status csc-waiting">Waiting…</div>`;
+      membersEl.appendChild(row);
+    }
+    updateCalBadge();
+  }
+
+  navigator.clipboard.writeText(link).then(()=>{
+    const btn = document.getElementById('csc-share-btn');
+    if(btn){ btn.textContent='Link copied! ✓'; setTimeout(()=>btn.textContent='Invite friends 🔗', 2500); }
+  }).catch(()=>{
+    // Fallback, show the link in a prompt
+    prompt('Share this link with your friends:', link);
+  });
+}
+function openPriv(){ document.getElementById('priv-bg').classList.add('open'); }
+function closePriv(e){ if(!e||e.target===document.getElementById('priv-bg')) document.getElementById('priv-bg').classList.remove('open'); }
+
+// ── TRIP ROOM ──
+// ── SUPABASE TRIP API ──
+async function apiTrip(action, body = null) {
+  const url = `/api/trip?action=${action}`;
+  const res = await fetch(url, {
+    method: body ? 'POST' : 'GET',
+    headers: { 'Content-Type': 'application/json' },
     body: body ? JSON.stringify(body) : null
   });
-  if (!res.ok) {
-    const err = await res.text();
-    throw new Error(`Supabase error ${res.status}: ${err}`);
+  return res.json();
+}
+
+async function apiGetTrip(code) {
+  const res = await fetch(`/api/trip?action=get&code=${code}`);
+  return res.json();
+}
+
+async function createTripRoom(destination, dates) {
+  try {
+    const data = await apiTrip('create', {
+      trip: {
+        destination,
+        dates,
+        people: trip.people,
+        transport: trip.transport,
+        accommodation: trip.accommodation,
+        budget: trip.budget,
+        duration: trip.duration
+      },
+      ownerName: 'You'
+    });
+
+    if (data.error) throw new Error(data.error);
+
+    const room = {
+      code: data.code,
+      tripId: data.tripId,
+      destination,
+      dates,
+      members: [{ name:'You', initials:'ME', col:'#FDF0EB', tcol:'#E8622A', status:'uploaded' }],
+      windows: []
+    };
+    currentRoom = room;
+    return room;
+  } catch(err) {
+    // Fallback to local if API fails
+    console.warn('Supabase unavailable, using local:', err);
+    const code = Math.random().toString(36).substr(2,6).toUpperCase();
+    const room = { code, destination, dates, members:[
+      {name:'You', initials:'ME', col:'#FDF0EB', tcol:'#E8622A', status:'uploaded'}
+    ], windows:[] };
+    currentRoom = room;
+    return room;
   }
-  return res.json().catch(() => null);
 }
 
-function generateCode() {
-  return Math.random().toString(36).substr(2, 6).toUpperCase();
+async function refreshTripRoom(code) {
+  try {
+    const data = await apiGetTrip(code);
+    if (data.error || !data.trip) return null;
+
+    const colors = [
+      {col:'#FDF0EB', tcol:'#E8622A'},
+      {col:'#E3F5F0', tcol:'#1A8A72'},
+      {col:'#EEECFB', tcol:'#4A3FBF'},
+      {col:'#FBF4E3', tcol:'#8A6400'}
+    ];
+
+    const members = (data.members || []).map((m, i) => ({
+      name: m.name,
+      initials: m.initials,
+      col: m.color_bg || colors[i % colors.length].col,
+      tcol: m.color_text || colors[i % colors.length].tcol,
+      status: m.calendar_connected ? 'uploaded' : 'waiting'
+    }));
+
+    const windows = (data.windows || []).map(w => ({
+      dates: w.label,
+      nights: w.nights + ' nights',
+      price: w.price_estimate,
+      bg: '#E3F5F0',
+      col: '#1A8A72'
+    }));
+
+    return { ...data.trip, code, members, windows };
+  } catch(err) {
+    return null;
+  }
 }
 
-export default async function handler(req) {
-  const { method } = req;
-  const url = new URL(req.url);
-  const action = url.searchParams.get('action');
+function renderTripRoom(room){
+  const link = `${window.location.origin}/room.html?code=${room.code}`;
+  const shareLink = `tryholidai.nl/room.html?code=${room.code}`;
+  const uploaded = room.members.filter(m=>m.status==='uploaded').length;
+  const total = room.members.length;
+  const membersHTML = room.members.map(m=>`
+    <div class="member-row">
+      <div class="m-av" style="background:${m.col};color:${m.tcol}">${m.initials}</div>
+      <div class="m-name">${m.name}</div>
+      <div class="m-status ${m.status==='uploaded'?(m.name==='You'?'ms-you':'ms-done'):'ms-wait'}">${m.status==='uploaded'?(m.name==='You'?'Your calendar ✓':'Calendar uploaded ✓'):'Waiting for calendar…'}</div>
+    </div>`).join('');
+
+  const windowsHTML = room.windows.length > 0 ? `
+    <div class="result-box">
+      <div class="result-label">Free windows found</div>
+      ${room.windows.map(w=>`
+        <div class="free-window">
+          <div><div class="fw-dates">${w.dates}</div><div class="fw-nights">${w.nights}</div></div>
+          <div class="fw-badge" style="background:${w.bg};color:${w.col}">${w.price}</div>
+        </div>`).join('')}
+    </div>` : `
+    <div style="background:var(--sand);border-radius:10px;padding:13px 15px;margin-top:12px;font-size:12px;color:var(--ink-muted);text-align:center">
+      Waiting for more calendars to find overlap…<br>
+      <span style="color:var(--ink-faint)">${uploaded} of ${total} uploaded</span>
+    </div>`;
+
+  return `
+    <div class="room-card">
+      <div class="room-header">
+        <div>
+          <div class="room-title">${room.destination} trip</div>
+          <div class="room-sub">${room.dates} · ${total} people</div>
+        </div>
+        <div class="room-badge">${uploaded}/${total} calendars</div>
+      </div>
+      <div class="room-link-box">
+        <div class="room-link-text">${shareLink || link}</div>
+        <button class="copy-btn" onclick="copyLink('${link}', this)">Copy link</button>
+      </div>
+      <div style="font-size:11px;color:var(--ink-muted);margin-bottom:10px">Share this link, each friend uploads only their own calendar</div>
+      ${membersHTML}
+      ${windowsHTML}
+    </div>`;
+}
+
+function copyLink(link, btn){
+  navigator.clipboard.writeText(link).then(()=>{
+    btn.textContent='Copied!';
+    setTimeout(()=>btn.textContent='Copy link', 2000);
+  });
+}
+
+// ── TRIP PROFILE ──
+// Stores answers to the onboarding questions
+const trip = { mode:null, intent:'', people:null, destination:null, knowsDest:null, transport:null, accommodation:null, budget:null, duration:null };
+
+// Question flow, each step asks one thing
+// steps: -1=mode select, 0=first message/people, 1=people, 2=destination?, 3=transport, 4=accommodation, 5=budget, 6=duration, 7=findWindows, 8=dests, 9=summary, 10=tripRoom
+function respond(text){
+  const t = text.toLowerCase();
+
+  if(step === 0){
+    // First message, save intent, ask how many people
+    trip.intent = text;
+    step = 1;
+    // Extract number if mentioned
+    const numMatch = text.match(/\b(\d+|two|three|four|five|six|seven|eight)\b/i);
+    if(numMatch){
+      const map = {two:2,three:3,four:4,five:5,six:6,seven:7,eight:8};
+      trip.people = parseInt(numMatch[1]) || map[numMatch[1].toLowerCase()] || null;
+    }
+    if(trip.people){
+      askTransport();
+    } else {
+      addAI(`<p>Sounds like a great trip. First, how many people are going?</p>
+        <div class="sugs">
+          <div class="sug" onclick="pickPeople(2)">Just 2</div>
+          <div class="sug" onclick="pickPeople(3)">3 people</div>
+          <div class="sug" onclick="pickPeople(4)">4 people</div>
+          <div class="sug" onclick="pickPeople(5)">5 people</div>
+          <div class="sug" onclick="pickPeople(6)">6+ people</div>
+        </div>`);
+    }
+    return;
+  }
+
+  if(step === 1){
+    // Parse typed number
+    const n = parseInt(text) || (text.includes('two')?2:text.includes('three')?3:text.includes('four')?4:text.includes('five')?5:4);
+    trip.people = n;
+    askDestination();
+    return;
+  }
+
+  if(step === 2){
+    // Typed destination
+    trip.destination = text;
+    trip.knowsDest = true;
+    askCalendar();
+    return;
+  }
+
+  if(step === 3){
+    // Calendar step, if they typed something move on
+    askTransport();
+    return;
+  }
+
+  if(step === 4){
+    trip.transport = text;
+    askAccommodation();
+    return;
+  }
+
+  if(step === 5){
+    trip.accommodation = text;
+    askBudget();
+    return;
+  }
+
+  if(step === 6){
+    trip.budget = text;
+    askDuration();
+    return;
+  }
+
+  if(step === 7){
+    trip.duration = text;
+    findWindows();
+    return;
+  }
+
+  if(step === 8){ if(trip.knowsDest){ showSummary(trip.destination); } else { showDests(); } return; }
+  if(step === 9){ showSummary(text); return; }
+  if(step === 10){ showTripRoom(text); return; }
+
+  addAI(`<p>Trip room is live, I'll keep an eye on prices. Anything else?</p>
+    <div class="sugs">
+      <div class="sug" onclick="newTrip()">Plan another trip</div>
+      <div class="sug" onclick="submit('Show me the cost split')">Cost split</div>
+    </div>`);
+}
+
+function pickPeople(n){
+  lockChoices();
+  trip.people = n;
+  addUser(n === 1 ? 'Solo trip' : n === 6 ? '6 or more' : n + ' people');
+  showTyping();
+  setTimeout(()=>{ removeTyping(); askKnowsDest(); }, 700);
+}
+
+function showPeopleInput(){
+  lockChoices();
+  // Show inline input in the last AI message
+  const lastAI = convoEl.querySelector('.msg-ai:last-child .ai-text');
+  if(!lastAI) return;
+  const wrap = document.createElement('div');
+  wrap.className = 'inline-input-wrap';
+  wrap.style.marginTop = '12px';
+  wrap.innerHTML = `<input class="inline-input" id="people-count-input" type="number" min="1" max="50" placeholder="How many people?" autocomplete="off"/><button class="inline-send" onclick="submitPeopleCount()">Go →</button>`;
+  lastAI.appendChild(wrap);
+  setTimeout(()=>{
+    const el = document.getElementById('people-count-input');
+    if(el){
+      el.focus();
+      el.addEventListener('keydown', e=>{ if(e.key==='Enter') submitPeopleCount(); });
+    }
+  }, 100);
+}
+
+function submitPeopleCount(){
+  const el = document.getElementById('people-count-input');
+  if(!el) return;
+  const n = parseInt(el.value);
+  if(!n || n < 1) return;
+  const wrap = el.closest('.inline-input-wrap');
+  if(wrap) wrap.remove();
+  pickPeople(n);
+}
+
+function askKnowsDest(){
+  step = 1;
+  addAI(`<p>Do you already know where you want to go?</p>
+    <div class="sugs">
+      <div class="sug sug-lg" onclick="pickKnowsDest(true)">Yes, I have a place in mind</div>
+      <div class="sug sug-lg" onclick="pickKnowsDest(false)">Not yet, help me find somewhere</div>
+    </div>`);
+}
+
+function askDestination(){
+  step = 2;
+  addAI(`<p>Do you already know where you want to go?</p>
+    <div class="sugs">
+      <div class="sug" onclick="pickKnowsDest(true)">Yes, I have a place in mind</div>
+      <div class="sug" onclick="pickKnowsDest(false)">No, help me find somewhere</div>
+    </div>`);
+}
+
+function pickKnowsDest(knows){
+  lockChoices();
+  trip.knowsDest = knows;
+  if(knows){
+    addUser('Yes, I have a place in mind');
+    showTyping();
+    setTimeout(()=>{
+      removeTyping();
+      step = 2;
+      addAI(`<p>Where do you want to go?</p>
+        <div class="sugs">
+          <div class="sug" onclick="pickDestination('Lisbon')">🇵🇹 Lisbon</div>
+          <div class="sug" onclick="pickDestination('Barcelona')">🇪🇸 Barcelona</div>
+          <div class="sug" onclick="pickDestination('Athens')">🇬🇷 Athens</div>
+          <div class="sug" onclick="pickDestination('Marrakech')">🇲🇦 Marrakech</div>
+          <div class="sug" onclick="pickDestination('Paris')">🇫🇷 Paris</div>
+          <div class="sug" onclick="pickDestination('Rome')">🇮🇹 Rome</div>
+          <div class="sug" onclick="pickDestination('Other')">Somewhere else…</div>
+        </div>`);
+    }, 700);
+  } else {
+    addUser('Not yet, help me find somewhere');
+    showTyping();
+    setTimeout(()=>{ removeTyping(); askCalendar(); }, 700);
+  }
+}
+
+function pickDestination(dest){
+  lockChoices();
+  if(dest === 'Other'){
+    addAI(`<p>Where are you thinking?</p>
+      <div class="inline-input-wrap">
+        <input class="inline-input" id="city-input" type="text" placeholder="e.g. Tbilisi, Dubrovnik, Bali…" autocomplete="off"/>
+        <button class="inline-send" onclick="submitCity()">Go →</button>
+      </div>`);
+    setTimeout(()=>{ const el=document.getElementById('city-input'); if(el){ el.focus(); el.addEventListener('keydown', e=>{ if(e.key==='Enter') submitCity(); }); }}, 100);
+    return;
+  }
+  trip.destination = dest;
+  trip.knowsDest = true;
+  addUser(dest);
+  showTyping();
+  setTimeout(()=>{ removeTyping(); askCalendar(); }, 700);
+}
+
+function submitCity(){
+  const el = document.getElementById('city-input');
+  if(!el) return;
+  const val = el.value.trim();
+  if(!val) return;
+  // Remove the inline input from the DOM
+  const wrap = el.closest('.inline-input-wrap');
+  if(wrap) wrap.remove();
+  pickDestination(val);
+}
+
+function askCalendar(){
+  // Calendar card is now always visible at top, skip this step
+  step = 3;
+  askTransport();
+}
+
+function skipCalendar(){
+  addUser('Skip, use example data');
+  showTyping();
+  setTimeout(()=>{ removeTyping(); askTransport(); }, 700);
+}
+
+function askTransport(){
+  step = 4;
+  addAI(`<p>How are you planning to get there?</p>
+    <div class="sugs">
+      <div class="sug" onclick="pickTransport('✈️ Plane')">✈️ Plane</div>
+      <div class="sug" onclick="pickTransport('🚂 Train')">🚂 Train</div>
+      <div class="sug" onclick="pickTransport('🚗 Car')">🚗 Car</div>
+      <div class="sug" onclick="pickTransport('🚢 Boat')">🚢 Boat</div>
+      <div class="sug" onclick="pickTransport('No preference')">No preference</div>
+    </div>`);
+}
+
+function pickTransport(val){
+  lockChoices();
+  trip.transport = val;
+  addUser(val);
+  showTyping();
+  setTimeout(()=>{ removeTyping(); askAccommodation(); }, 700);
+}
+
+function askAccommodation(){
+  step = 5;
+  addAI(`<p>Got it. Where are you thinking of staying?</p>
+    <div class="sugs">
+      <div class="sug" onclick="pickAccommodation('🏨 Hotel')">🏨 Hotel</div>
+      <div class="sug" onclick="pickAccommodation('🏠 Airbnb')">🏠 Airbnb</div>
+      <div class="sug" onclick="pickAccommodation('🛏️ Hostel')">🛏️ Hostel</div>
+      <div class="sug" onclick="pickAccommodation('⛺ Camping')">⛺ Camping</div>
+      <div class="sug" onclick="pickAccommodation('🏡 Own accommodation')">🏡 Own accommodation</div>
+      <div class="sug" onclick="pickAccommodation('No preference')">No preference</div>
+    </div>`);
+}
+
+function pickAccommodation(val){
+  lockChoices();
+  trip.accommodation = val;
+  addUser(val);
+  showTyping();
+  setTimeout(()=>{ removeTyping(); askBudget(); }, 700);
+}
+
+function askBudget(){
+  step = 6;
+  addAI(`<p>How are you all feeling about spending?</p>
+    <div class="vibe-grid">
+      <div class="vibe-card" onclick="pickBudget('cheap')">
+        <div class="vc-emoji">🪙</div>
+        <div class="vc-title">Keep it cheap</div>
+        <div class="vc-sub">Hostels, budget flights, street food. The trip matters, not the comfort.</div>
+      </div>
+      <div class="vibe-card" onclick="pickBudget('reasonable')">
+        <div class="vc-emoji">✌️</div>
+        <div class="vc-title">Reasonable</div>
+        <div class="vc-sub">Decent place to sleep, no frills but no suffering. Happy medium.</div>
+      </div>
+      <div class="vibe-card" onclick="pickBudget('splurge')">
+        <div class="vc-emoji">🥂</div>
+        <div class="vc-title">Splash out</div>
+        <div class="vc-sub">Nice hotel, good flights, treat ourselves. We've earned it.</div>
+      </div>
+    </div>`);
+}
+
+function pickBudget(val){
+  lockChoices();
+  trip.budget = val;
+  const labels = { cheap:'Keep it cheap 🪙', reasonable:'Reasonable ✌️', splurge:'Splash out 🥂' };
+  addUser(labels[val] || val);
+  showTyping();
+  setTimeout(()=>{ removeTyping(); askDuration(); }, 700);
+}
+
+function askDuration(){
+  step = 7;
+  addAI(`<p>Last one, how long are you thinking?</p>
+    <div class="sugs">
+      <div class="sug" onclick="pickDuration('A long weekend (3–4 nights)')">Long weekend</div>
+      <div class="sug" onclick="pickDuration('A full week (6–7 nights)')">Full week</div>
+      <div class="sug" onclick="pickDuration('10+ nights')">10+ nights</div>
+      <div class="sug" onclick="pickDuration('Not sure yet')">Not sure yet</div>
+      <div class="sug" onclick="showDurationInput()">I know exactly…</div>
+    </div>
+    <div class="inline-input-wrap" id="duration-input-wrap" style="display:none;margin-top:10px">
+      <input class="inline-input" id="duration-input" type="text" placeholder="e.g. 5 nights, 10 days…" autocomplete="off"/>
+      <button class="inline-send" onclick="submitDuration()">Go →</button>
+    </div>`);
+}
+
+function showDurationInput(){
+  lockChoices();
+  const wrap = document.getElementById('duration-input-wrap');
+  if(wrap){ wrap.style.display='flex'; setTimeout(()=>document.getElementById('duration-input').focus(),100); }
+  document.getElementById('duration-input').addEventListener('keydown', e=>{ if(e.key==='Enter') submitDuration(); });
+}
+
+function submitDuration(){
+  const el = document.getElementById('duration-input');
+  if(!el) return;
+  const val = el.value.trim();
+  if(!val) return;
+  pickDuration(val);
+}
+
+function pickDuration(val){
+  lockChoices();
+  trip.duration = val;
+  addUser(val);
+  showTyping();
+  setTimeout(()=>{ removeTyping(); findWindows(); }, 900);
+}
+
+function findWindows(){
+  step = 8;
+  const isCar = trip.transport?.includes('Car');
+  const isTrain = trip.transport?.includes('Train');
+  const dest = trip.destination || null;
+  const people = trip.people || 4;
+
+  // Build a live search preview card if we know dest + transport
+  let previewCard = '';
+  if(dest && !isCar){
+    const searchDates = ['2025-09-04','2025-10-17','2025-07-12'];
+    if(isTrain){
+      const link = trainlineLink('Amsterdam', dest, '2025-09-04', people);
+      previewCard = `
+        <div class="preview-card">
+          <div class="pc-header">
+            <div class="pc-provider-badge">🚂 Trainline</div>
+            <div class="pc-live-badge">Live search</div>
+          </div>
+          <div class="pc-route">Amsterdam → ${dest}</div>
+          <div class="pc-detail">${people} passengers · prices update daily</div>
+          <a href="${link}" target="_blank" class="pc-search-btn">Search trains on Trainline →</a>
+        </div>`;
+    } else {
+      const link = skyscannerLink('Amsterdam', dest, '2025-09-04', '2025-09-11', people);
+      previewCard = `
+        <div class="preview-card">
+          <div class="pc-header">
+            <div class="pc-provider-badge">✈️ Skyscanner</div>
+            <div class="pc-live-badge">Live prices</div>
+          </div>
+          <div class="pc-route">Amsterdam → ${dest}</div>
+          <div class="pc-detail">${people} passengers · economy · return · prices update daily</div>
+          <div class="pc-airlines">
+            <div class="pc-airline"><div class="pc-airline-logo">FR</div><div class="pc-airline-info"><div class="pc-airline-name">Ryanair</div><div class="pc-airline-route">AMS → ${getAirportCode(dest)} · ~2h</div></div><div class="pc-airline-price">from €${getEstimatedPrice(dest, trip.budget, 'cheap-carrier')}</div></div>
+            <div class="pc-airline pc-airline-mid"><div class="pc-airline-logo" style="background:#003087;color:white">KL</div><div class="pc-airline-info"><div class="pc-airline-name">KLM</div><div class="pc-airline-route">AMS → ${getAirportCode(dest)} · ~2h</div></div><div class="pc-airline-price">from €${getEstimatedPrice(dest, trip.budget, 'full-carrier')}</div></div>
+          </div>
+          <a href="${link}" target="_blank" class="pc-search-btn">See all flights on Skyscanner →</a>
+        </div>`;
+    }
+  }
+
+  const destNote = dest ? ` to <strong>${dest}</strong>` : '';
+  const accType = trip.accommodation ? trip.accommodation.split(' ').slice(1).join(' ').toLowerCase() : 'accommodation';
+  const budgetNote = trip.budget === 'cheap' ? 'budget-conscious' : trip.budget === 'splurge' ? 'no-limits' : 'mid-range';
+
+  addAI(`<p>Got it, ${people} people${destNote}, ${accType}, ${budgetNote} vibe. ${calConnected ? 'Scanned all calendars.' : 'Checked example calendars.'} Here are the windows where <strong>everyone's free</strong>:</p>
+    <div class="cards">
+      <div class="w-chip" onclick="pickW(this,'Oct 17–22','2025-10-17','2025-10-22')"><div class="wc-date">Oct 17 – 22</div><div class="wc-meta">5 nights · low season · all free</div><div class="wc-price ok">cheapest window</div></div>
+      <div class="w-chip" onclick="pickW(this,'Sep 4–11','2025-09-04','2025-09-11')"><div class="wc-date">Sep 4 – 11</div><div class="wc-meta">7 nights · shoulder season · all free</div><div class="wc-price ok">best value</div></div>
+      <div class="w-chip" onclick="pickW(this,'Jul 12–19','2025-07-12','2025-07-19')"><div class="wc-date">Jul 12 – 19</div><div class="wc-meta">7 nights · summer peak · all free</div><div class="wc-price warn">busiest period</div></div>
+    </div>
+    ${previewCard}
+    <p style="margin-top:12px;font-size:12px;color:var(--ink-muted)">Tap a window to get exact flight and accommodation prices for those dates.</p>`);
+}
+
+function getAirportCode(dest){
+  const codes = {Lisbon:'LIS', Barcelona:'BCN', Athens:'ATH', Marrakech:'RAK',
+    Berlin:'BER', Paris:'CDG', Rome:'FCO', Hamburg:'HAM',
+    'Chiclana de la Frontera':'XRY', Seville:'SVQ', Madrid:'MAD',
+    Málaga:'AGP', Valencia:'VLC', Ibiza:'IBZ', Palma:'PMI'};
+  return codes[dest] || dest.substring(0,3).toUpperCase();
+}
+
+function getEstimatedPrice(dest, budget, carrier){
+  // Rough estimates from Amsterdam, purely indicative
+  const base = {
+    Lisbon:89, Barcelona:79, Athens:109, Marrakech:129,
+    Berlin:59, Paris:69, Rome:99, Hamburg:49,
+    'Chiclana de la Frontera':99, Seville:89, Madrid:79,
+    Málaga:79, Valencia:89, Ibiza:99, Palma:79
+  };
+  const b = base[dest] || 109;
+  const mult = budget === 'splurge' ? 1.6 : budget === 'cheap' ? 1.0 : 1.25;
+  const carrierMult = carrier === 'full-carrier' ? 1.5 : 1.0;
+  return Math.round(b * mult * carrierMult);
+}
+
+function showDests(){
+  step = 9;
+  // Filter by transport preference
+  const byPlane = !trip.transport || trip.transport.includes('Plane') || trip.transport === 'No preference';
+  const byCar = trip.transport && trip.transport.includes('Car');
+  const byTrain = trip.transport && trip.transport.includes('Train');
+  let dests = [
+    {flag:'🇵🇹', name:'Lisbon', price:'€240/pp', score:'96', note: byPlane?'2h flight':'12h drive'},
+    {flag:'🇪🇸', name:'Barcelona', price:'€280/pp', score:'94', note: byPlane?'2.5h flight':byTrain?'6h train':'11h drive'},
+    {flag:'🇬🇷', name:'Athens', price:'€210/pp', score:'91', note: byPlane?'3.5h flight':'N/A by car'},
+    {flag:'🇲🇦', name:'Marrakech', price:'€195/pp', score:'88', note: byPlane?'3h flight':'N/A by car'},
+  ];
+  if(byCar){
+    dests = [
+      {flag:'🇩🇪', name:'Berlin', price:'€120/pp', score:'89', note:'6h drive'},
+      {flag:'🇧🇪', name:'Bruges', price:'€90/pp', score:'87', note:'3h drive'},
+      {flag:'🇩🇪', name:'Hamburg', price:'€110/pp', score:'85', note:'5h drive'},
+      {flag:'🇫🇷', name:'Paris', price:'€150/pp', score:'88', note:'4h drive'},
+    ];
+  }
+  addAI(`<p>Best destinations for your trip${byCar?' within driving distance from Amsterdam':''}:</p>
+    <div class="cards">
+      ${dests.map(d=>`<div class="d-chip" onclick="pickD(this,'${d.name}')"><div class="dc-flag">${d.flag}</div><div class="dc-name">${d.name}</div><div class="dc-price">${d.price} · ${d.note}</div><div class="dc-score">Score ${d.score}</div></div>`).join('')}
+    </div>`);
+}
+
+// ── DEEP LINK BUILDERS ──
+function skyscannerLink(origin, dest, dateOut, dateBack, adults){
+  // Skyscanner deep link format
+  const codes = {
+    Amsterdam:'AMS', Lisbon:'LIS', Barcelona:'BCN', Athens:'ATH',
+    Marrakech:'RAK', Berlin:'BER', Paris:'CDG', Hamburg:'HAM', Bruges:'BRU'
+  };
+  const from = codes[origin] || 'AMS';
+  const to = codes[dest] || 'LIS';
+  const out = dateOut.replace(/-/g,'');
+  const back = dateBack.replace(/-/g,'');
+  return `https://www.skyscanner.net/transport/flights/${from.toLowerCase()}/${to.toLowerCase()}/${out}/${back}/?adults=${adults}&cabinclass=economy&ref=holid.ai`;
+}
+
+function bookingLink(dest, checkIn, checkOut, adults, rooms){
+  const city = encodeURIComponent(dest);
+  return `https://www.booking.com/search.html?ss=${city}&checkin=${checkIn}&checkout=${checkOut}&group_adults=${adults}&no_rooms=${rooms}&selected_currency=EUR&aid=holid.ai`;
+}
+
+function airbnbLink(dest, checkIn, checkOut, adults){
+  const query = encodeURIComponent(dest);
+  return `https://www.airbnb.com/s/${query}/homes?checkin=${checkIn}&checkout=${checkOut}&adults=${adults}`;
+}
+
+function trainlineLink(origin, dest, date, passengers){
+  const from = encodeURIComponent(origin);
+  const to = encodeURIComponent(dest);
+  return `https://www.thetrainline.com/book/results?origin=${from}&destination=${to}&outwardDate=${date}&adults=${passengers}`;
+}
+
+function hostelworldLink(dest, checkIn, checkOut, guests){
+  const city = encodeURIComponent(dest);
+  return `https://www.hostelworld.com/search?search_keywords=${city}&dateFrom=${checkIn}&dateTo=${checkOut}&number_of_guests=${guests}`;
+}
+
+function formatDate(daysFromNow){
+  const d = new Date();
+  d.setDate(d.getDate() + daysFromNow);
+  return d.toISOString().split('T')[0];
+}
+
+function bookingCard({ icon, provider, label, sublabel, ctaText, link, highlight }){
+  return `
+    <div class="booking-card ${highlight?'booking-card-hi':''}">
+      <div class="bc-left">
+        <div class="bc-icon">${icon}</div>
+        <div>
+          <div class="bc-provider">${provider}</div>
+          <div class="bc-label">${label}</div>
+          <div class="bc-sub">${sublabel}</div>
+        </div>
+      </div>
+      <a href="${link}" target="_blank" class="bc-cta">${ctaText} →</a>
+    </div>`;
+}
+
+function showSummary(text){
+  step = 10;
+  const dest = text.includes('barcelona')?'Barcelona':text.includes('athens')?'Athens':text.includes('marrakech')?'Marrakech':text.includes('berlin')?'Berlin':text.includes('paris')?'Paris':text.includes('bruges')?'Bruges':'Lisbon';
+  const nights = trip.duration?.includes('long weekend')?4:trip.duration?.includes('10')?10:7;
+  const people = trip.people || 4;
+  const rooms = Math.ceil(people / 2);
+  const isCar = trip.transport?.includes('Car');
+  const isTrain = trip.transport?.includes('Train');
+  const isAirbnb = trip.accommodation?.includes('Airbnb');
+  const isHostel = trip.accommodation?.includes('Hostel');
+  const isCamping = trip.accommodation?.includes('Camping');
+
+  // Use actual picked window dates
+  const checkIn = pickedDateIn || '2025-09-04';
+  const checkOut = pickedDateOut || `2025-09-${String(4+nights).padStart(2,'0')}`;
+  const returnDate = checkOut;
+
+  // Build transport card
+  let transportCard = '';
+  if(isCar){
+    transportCard = bookingCard({
+      icon:'🚗', provider:'Google Maps', label:`Amsterdam → ${dest}`,
+      sublabel:`${people} people · split petrol · ~4–10h depending on route`,
+      ctaText:'Get directions', link:`https://www.google.com/maps/dir/Amsterdam/${encodeURIComponent(dest)}`,
+      highlight: false
+    });
+  } else if(isTrain){
+    transportCard = bookingCard({
+      icon:'🚂', provider:'Trainline', label:`Amsterdam → ${dest}`,
+      sublabel:`${people} passengers · ${checkIn} · return ${returnDate}`,
+      ctaText:'Search trains', link: trainlineLink('Amsterdam', dest, checkIn, people),
+      highlight: true
+    });
+  } else {
+    transportCard = bookingCard({
+      icon:'✈️', provider:'Skyscanner', label:`Amsterdam → ${dest}`,
+      sublabel:`${people} passengers · ${checkIn} · return ${returnDate} · economy`,
+      ctaText:'Search flights', link: skyscannerLink('Amsterdam', dest, checkIn, returnDate, people),
+      highlight: true
+    });
+  }
+
+  // Build accommodation card
+  let accCard = '';
+  if(isAirbnb){
+    accCard = bookingCard({
+      icon:'🏠', provider:'Airbnb', label:`Entire place in ${dest}`,
+      sublabel:`${people} guests · ${checkIn} – ${checkOut} · ${nights} nights`,
+      ctaText:'Search Airbnb', link: airbnbLink(dest, checkIn, checkOut, people),
+      highlight: false
+    });
+  } else if(isHostel){
+    accCard = bookingCard({
+      icon:'🛏️', provider:'Hostelworld', label:`Hostels in ${dest}`,
+      sublabel:`${people} guests · ${checkIn} – ${checkOut} · ${nights} nights`,
+      ctaText:'Search hostels', link: hostelworldLink(dest, checkIn, checkOut, people),
+      highlight: false
+    });
+  } else if(isCamping){
+    accCard = bookingCard({
+      icon:'⛺', provider:'Booking.com', label:`Campsites near ${dest}`,
+      sublabel:`${people} guests · ${checkIn} – ${checkOut} · ${nights} nights`,
+      ctaText:'Search campsites', link: bookingLink(dest+' camping', checkIn, checkOut, people, rooms),
+      highlight: false
+    });
+  } else {
+    accCard = bookingCard({
+      icon:'🏨', provider:'Booking.com', label:`Hotels in ${dest}`,
+      sublabel:`${rooms} room${rooms>1?'s':''} · ${people} guests · ${checkIn} – ${checkOut}`,
+      ctaText:'Search hotels', link: bookingLink(dest, checkIn, checkOut, people, rooms),
+      highlight: false
+    });
+  }
+
+  const vibeNote = trip.budget==='cheap'?'Filtered for the best value options.':trip.budget==='splurge'?'Showing top-rated options.':'Good balance of price and quality.';
+
+  addAI(`<p>Here's what I found for <strong>${dest}</strong>, tap to open real results:</p>
+    <div class="booking-stack">
+      ${transportCard}
+      ${accCard}
+    </div>
+    <p style="margin-top:10px;font-size:12px;color:var(--ink-muted)">${vibeNote} Prices update live on each platform.</p>
+    <div class="sugs">
+      <div class="sug" onclick="submit('Yes, create the trip room!')">Create trip room 🔗</div>
+      <div class="sug" onclick="submit('Try a different destination')">Different destination</div>
+    </div>`);
+}
+
+async function showTripRoom(text){
+  step = 11;
+  const dest = trip.destination || (currentRoom ? currentRoom.destination : 'your destination');
+  const nights = trip.duration?.includes('long weekend')?4:trip.duration?.includes('10')?10:7;
+  const dates = `${pickedWindow || 'Sep 4'} (${nights} nights)`;
+
+  // Show loading state
+  addAI(`<p>Creating your trip room...</p>`);
+
+  const room = await createTripRoom(dest, dates);
+
+  // Replace loading message with real room card
+  const lastMsg = convoEl.querySelector('.msg-ai:last-child .ai-text');
+  if(lastMsg){
+    lastMsg.innerHTML = `<p>Trip room created. Share this link — each friend opens it and uploads only their own calendar. Nobody sees anyone else's agenda.</p>
+    ${renderTripRoom(room)}
+    <p style="margin-top:10px;font-size:13px;color:var(--ink-muted)">I'm watching prices too — I'll alert you if ${trip.transport?.includes('Car')?'fuel costs change':trip.transport?.includes('Train')?'train prices move':'flights move'}.</p>
+    <div class="sugs">
+      <div class="sug" onclick="openUpload()">Upload my .ics now</div>
+      <div class="sug" onclick="submit('Set a price alert')">Set price alert</div>
+    </div>`;
+  }
+
+  // Poll for updates every 10 seconds
+  if(room.tripId || room.code){
+    const pollInterval = setInterval(async ()=>{
+      const updated = await refreshTripRoom(room.code);
+      if(!updated) return;
+      currentRoom = updated;
+      const cards = document.querySelectorAll('.room-card');
+      if(cards.length > 0) cards[cards.length-1].outerHTML = renderTripRoom(updated);
+    }, 10000);
+    // Stop polling after 10 minutes
+    setTimeout(()=>clearInterval(pollInterval), 600000);
+  }
+}
+
+function openUpload(){
+  addAI(`<p>To export your calendar from Apple Calendar:</p>
+    <p style="color:var(--ink-muted);font-size:13px">1. Open Calendar on your Mac<br>2. Right-click your calendar → Export…<br>3. Upload the .ics file below</p>
+    <div class="upload-area" id="upload-drop">
+      <input type="file" accept=".ics" onchange="handleICS(this.files[0])"/>
+      <div class="upload-icon"><svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M8 2v9M4 7l4-5 4 5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/><path d="M2 13h12" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg></div>
+      <div class="upload-title">Drop your .ics file here</div>
+      <div class="upload-sub">or click to browse · Apple Calendar, Google, Outlook all work</div>
+    </div>`);
+}
+
+function handleICS(file){
+  if(!file) return;
+  const reader=new FileReader();
+  reader.onload=e=>{
+    const text=e.target.result;
+    const windows=parseICS(text);
+    showICSResult(file.name, windows);
+  };
+  reader.readAsText(file);
+}
+
+function parseICS(text){
+  // Parse VEVENT blocks and find busy periods
+  const events=[];
+  const eventBlocks=text.split('BEGIN:VEVENT');
+  eventBlocks.slice(1).forEach(block=>{
+    const dtstart=block.match(/DTSTART[^:]*:([^\r\n]+)/);
+    const dtend=block.match(/DTEND[^:]*:([^\r\n]+)/);
+    if(dtstart&&dtend){
+      events.push({ start:parseICSDate(dtstart[1]), end:parseICSDate(dtend[1]) });
+    }
+  });
+  // Find free windows in Sep–Oct (next 3 months from today)
+  const freeWindows=[];
+  const checkStart=new Date('2025-09-01');
+  const checkEnd=new Date('2025-11-30');
+  // Check each week
+  let d=new Date(checkStart);
+  while(d<checkEnd){
+    const weekEnd=new Date(d); weekEnd.setDate(weekEnd.getDate()+7);
+    const busy=events.some(ev=> ev.start<weekEnd && ev.end>d);
+    if(!busy){
+      freeWindows.push({
+        start:new Date(d), end:new Date(weekEnd),
+        label:formatDateRange(d,weekEnd)
+      });
+    }
+    d.setDate(d.getDate()+7);
+    if(freeWindows.length>=3) break;
+  }
+  return freeWindows.length>0?freeWindows:[
+    {label:'Sep 4 – 11', nights:'7 nights'},
+    {label:'Oct 3 – 10', nights:'7 nights'},
+    {label:'Oct 17 – 24', nights:'7 nights'}
+  ];
+}
+
+function parseICSDate(str){
+  str=str.trim();
+  if(str.length>=8){
+    const y=str.substr(0,4),m=str.substr(4,2),d=str.substr(6,2);
+    return new Date(`${y}-${m}-${d}`);
+  }
+  return new Date();
+}
+function formatDateRange(s,e){
+  const opts={month:'short',day:'numeric'};
+  return `${s.toLocaleDateString('en-GB',opts)} – ${e.toLocaleDateString('en-GB',opts)}`;
+}
+
+function showICSResult(filename, windows){
+  const drop=document.getElementById('upload-drop');
+  if(drop) drop.remove();
+  addAI(`<p>Calendar uploaded ✓ <span style="color:var(--ink-faint);font-size:12px">${esc(filename)}</span></p>
+    <p>Found <strong>${windows.length} free windows</strong> in your calendar for the next 3 months. As your friends upload theirs, I'll narrow these down to when everyone is available.</p>
+    <div class="result-box">
+      <div class="result-label">Your free windows</div>
+      ${windows.map(w=>`
+        <div class="free-window">
+          <div><div class="fw-dates">${w.label||w.dates}</div><div class="fw-nights">${w.nights||'7 nights'}</div></div>
+          <div class="fw-badge" style="background:var(--teal-dim);color:var(--teal)">Free</div>
+        </div>`).join('')}
+    </div>
+    <div class="sugs">
+      <div class="sug" onclick="submit('Send reminders to friends to upload their calendar')">Remind friends</div>
+      <div class="sug" onclick="submit('Show me the trip room')">Trip room</div>
+    </div>`);
+}
+
+let pickedWindow='Sep 4–11';
+let pickedDateIn='2025-09-04';
+let pickedDateOut='2025-09-11';
+function pickW(el,label,dateIn,dateOut){
+  lockChoices();
+  document.querySelectorAll('.w-chip').forEach(c=>c.classList.remove('sel'));
+  el.classList.add('sel');
+  pickedWindow=label;
+  if(dateIn) pickedDateIn=dateIn;
+  if(dateOut) pickedDateOut=dateOut;
+  if(trip.knowsDest && trip.destination){
+    setTimeout(()=>{
+      addUser(`${label} works for us`);
+      showTyping();
+      setTimeout(()=>{ removeTyping(); showSummary(trip.destination); }, 900);
+    }, 200);
+  } else {
+    setTimeout(()=>{ addUser(`${label} works for us`); showTyping(); setTimeout(()=>{ removeTyping(); showDests(); },900); },200);
+  }
+}
+function pickD(el,name){
+  lockChoices();
+  document.querySelectorAll('.d-chip').forEach(c=>c.classList.remove('sel'));
+  el.classList.add('sel');
+  setTimeout(()=>submit(`Let\'s go to ${name}`),200);
+}
+function newTrip(){
+  step=0; currentRoom=null;
+  Object.assign(trip,{mode:null,intent:'',people:null,destination:null,knowsDest:null,transport:null,accommodation:null,budget:null,duration:null});
+  convoEl.innerHTML='';
+  const cw=document.getElementById('convo-wrap'); if(cw) cw.scrollTop=0;
+  startConversation();
+}
+
+// ── CALENDAR CARD TOGGLE ──
+let calCardOpen = false;
+function toggleCalCard(){
+  calCardOpen = !calCardOpen;
+  const expanded = document.getElementById('csc-expanded');
+  const chevron = document.getElementById('csc-chevron');
+  if(expanded) expanded.classList.toggle('open', calCardOpen);
+  if(chevron) chevron.classList.toggle('open', calCardOpen);
+}
+
+// ── AUTO-START ──
+function startConversation(){
+  step = 0;
+  setTimeout(()=>{
+    heroEl.classList.remove('active');
+    addAI(`<p>Hey! Let\'s get that trip planned. How many people are going?</p>
+      <div class="people-grid">
+        <div class="people-card" onclick="pickPeople(1)"><div class="pc-icons">${personIcons(1)}</div><div class="pc-num">1</div><div class="pc-label">Just me</div></div>
+        <div class="people-card" onclick="pickPeople(2)"><div class="pc-icons">${personIcons(2)}</div><div class="pc-num">2</div><div class="pc-label">Two of us</div></div>
+        <div class="people-card" onclick="pickPeople(3)"><div class="pc-icons">${personIcons(3)}</div><div class="pc-num">3</div><div class="pc-label">Three of us</div></div>
+        <div class="people-card" onclick="pickPeople(4)"><div class="pc-icons">${personIcons(4)}</div><div class="pc-num">4</div><div class="pc-label">Four of us</div></div>
+        <div class="people-card" onclick="pickPeople(5)"><div class="pc-icons">${personIcons(5)}</div><div class="pc-num">5</div><div class="pc-label">Five of us</div></div>
+        <div class="people-card" onclick="showPeopleInput()"><div class="pc-icons">${personIcons(6)}</div><div class="pc-num">6+</div><div class="pc-label">More of us</div></div>
+      </div>`);
+  }, 0);
+}
+function pickMode(mode){
+  trip.mode = mode;
+  const labels = {
+    full: 'Plan the whole trip',
+    'dates-flights-acc': 'Dates + flights + accommodation',
+    window: 'Find a free window',
+    flights: 'Cheapest flights',
+    accommodation: 'Find accommodation'
+  };
+  addUser(labels[mode]);
+  showTyping();
+  setTimeout(()=>{
+    removeTyping();
+    step = 0;
+    // Route to right starting question based on mode
+    if(mode === 'flights' || mode === 'accommodation'){
+      // Skip people, go straight to destination
+      addAI(`<p>Got it. Where are you going?</p>
+        <div class="sugs">
+          <div class="sug" onclick="pickDestination('Lisbon')">🇵🇹 Lisbon</div>
+          <div class="sug" onclick="pickDestination('Barcelona')">🇪🇸 Barcelona</div>
+          <div class="sug" onclick="pickDestination('Athens')">🇬🇷 Athens</div>
+          <div class="sug" onclick="pickDestination('Paris')">🇫🇷 Paris</div>
+          <div class="sug" onclick="pickDestination('Rome')">🇮🇹 Rome</div>
+          <div class="sug" onclick="pickDestination('Other')">Somewhere else…</div>
+        </div>`);
+    } else if(mode === 'window'){
+      // Just need calendar sync + window finding
+      addAI(`<p>Let's find when everyone's free. How many people are in your group?</p>
+        <div class="people-grid">
+          <div class="people-card" onclick="pickPeopleWindow(1)"><div class="pc-icons">${personIcons(1)}</div><div class="pc-num">1</div><div class="pc-label">Just me</div></div>
+          <div class="people-card" onclick="pickPeopleWindow(2)"><div class="pc-icons">${personIcons(2)}</div><div class="pc-num">2</div><div class="pc-label">Two of us</div></div>
+          <div class="people-card" onclick="pickPeopleWindow(3)"><div class="pc-icons">${personIcons(3)}</div><div class="pc-num">3</div><div class="pc-label">Three of us</div></div>
+          <div class="people-card" onclick="pickPeopleWindow(4)"><div class="pc-icons">${personIcons(4)}</div><div class="pc-num">4</div><div class="pc-label">Four of us</div></div>
+          <div class="people-card" onclick="pickPeopleWindow(5)"><div class="pc-icons">${personIcons(5)}</div><div class="pc-num">5</div><div class="pc-label">Five of us</div></div>
+          <div class="people-card" onclick="showPeopleInput()"><div class="pc-icons">${personIcons(6)}</div><div class="pc-num">6+</div><div class="pc-label">More of us</div></div>
+        </div>`);
+    } else {
+      // Full flow or dates+flights+acc, ask people first
+      addAI(`<p>${mode === 'dates-flights-acc' ? 'Perfect, let\'s find the best dates and prices.' : 'Let\'s plan the whole thing.'} First, how many people are going?</p>
+        <div class="people-grid">
+          <div class="people-card" onclick="pickPeople(1)"><div class="pc-icons">${personIcons(1)}</div><div class="pc-num">1</div><div class="pc-label">Just me</div></div>
+          <div class="people-card" onclick="pickPeople(2)"><div class="pc-icons">${personIcons(2)}</div><div class="pc-num">2</div><div class="pc-label">Two of us</div></div>
+          <div class="people-card" onclick="pickPeople(3)"><div class="pc-icons">${personIcons(3)}</div><div class="pc-num">3</div><div class="pc-label">Three of us</div></div>
+          <div class="people-card" onclick="pickPeople(4)"><div class="pc-icons">${personIcons(4)}</div><div class="pc-num">4</div><div class="pc-label">Four of us</div></div>
+          <div class="people-card" onclick="pickPeople(5)"><div class="pc-icons">${personIcons(5)}</div><div class="pc-num">5</div><div class="pc-label">Five of us</div></div>
+          <div class="people-card" onclick="showPeopleInput()"><div class="pc-icons">${personIcons(6)}</div><div class="pc-num">6+</div><div class="pc-label">More of us</div></div>
+        </div>`);
+    }
+  }, 700);
+}
+
+function runWindowOnly(){
+  addUser('Use example data');
+  showTyping();
+  setTimeout(()=>{
+    removeTyping();
+    step = 7;
+    addAI(`<p>Here are the windows where all ${trip.people} of you are free:</p>
+      <div class="cards">
+        <div class="w-chip" onclick="pickW(this,'Oct 17–22','2025-10-17','2025-10-22')"><div class="wc-date">Oct 17 – 22</div><div class="wc-meta">5 nights · low season</div><div class="wc-price ok">cheapest window</div></div>
+        <div class="w-chip" onclick="pickW(this,'Sep 4–11','2025-09-04','2025-09-11')"><div class="wc-date">Sep 4 – 11</div><div class="wc-meta">7 nights · shoulder season</div><div class="wc-price ok">best value</div></div>
+        <div class="w-chip" onclick="pickW(this,'Jul 12–19','2025-07-12','2025-07-19')"><div class="wc-date">Jul 12 – 19</div><div class="wc-meta">7 nights · summer peak</div><div class="wc-price warn">busiest period</div></div>
+      </div>
+      <p style="margin-top:10px;font-size:12px;color:var(--ink-muted)">Want to go further? Tap a window to search flights and accommodation.</p>`);
+  }, 900);
+}
+
+function personIcons(n){
+  const colors = ['#FDF0EB','#E3F5F0','#EEECFB','#FBF4E3','#E6F1FB','#FAECE7'];
+  const tcolors = ['#E8622A','#1A8A72','#4A3FBF','#8A6400','#0C447C','#712B13'];
+  const initials = ['ME','S','J','L','M','K'];
+  let html = '';
+  const show = Math.min(n, 4);
+  for(let i=0;i<show;i++){
+    html += `<div class="pc-av" style="background:${colors[i]};color:${tcolors[i]};margin-left:${i>0?'-8px':'0'};z-index:${show-i}">${initials[i]}</div>`;
+  }
+  if(n>4) html += `<div class="pc-av" style="background:var(--sand-dark);color:var(--ink-muted);margin-left:-8px;z-index:0;font-size:9px">+${n-4}</div>`;
+  return html;
+}
+
+startConversation();
+
+// ── ASSISTANT PANEL ──
+const assistantHistory = [];
+
+function toggleAssistant(){
+  const panel = document.getElementById('assistant-panel');
+  panel.classList.toggle('open');
+  if(panel.classList.contains('open')){
+    setTimeout(()=>document.getElementById('ap-input').focus(), 200);
+  }
+}
+
+async function sendAssistantMsg(){
+  const input = document.getElementById('ap-input');
+  const msg = input.value.trim();
+  if(!msg) return;
+  input.value = '';
+  addAPMessage(msg, 'user');
+  assistantHistory.push({ role: 'user', content: msg });
+
+  // Show typing indicator
+  const msgs = document.getElementById('ap-messages');
+  const typing = document.createElement('div');
+  typing.className = 'ap-msg ap-msg-ai'; typing.id = 'ap-typing';
+  typing.innerHTML = '<div class="ap-bubble" style="color:var(--ink-faint)">...</div>';
+  msgs.appendChild(typing); msgs.scrollTop = msgs.scrollHeight;
 
   try {
-
-    // ── CREATE TRIP ──────────────────────────────
-    if (method === 'POST' && action === 'create') {
-      const { trip, ownerName } = await req.json();
-      const code = generateCode();
-
-      // Create the trip
-      const [newTrip] = await supabase('trips', 'POST', {
-        code,
-        destination: trip.destination || null,
-        dates: trip.dates || null,
-        people: trip.people || null,
-        transport: trip.transport || null,
-        accommodation: trip.accommodation || null,
-        budget: trip.budget || null,
-        duration: trip.duration || null,
-        status: 'planning'
-      });
-
-      // Add the owner as first member
-      const colors = [
-        { bg: '#FDF0EB', text: '#E8622A' },
-        { bg: '#E3F5F0', text: '#1A8A72' },
-        { bg: '#EEECFB', text: '#4A3FBF' },
-        { bg: '#FBF4E3', text: '#8A6400' }
-      ];
-      const initials = ownerName ? ownerName.substring(0, 2).toUpperCase() : 'ME';
-      await supabase('members', 'POST', {
-        trip_id: newTrip.id,
-        name: ownerName || 'You',
-        initials,
-        color_bg: colors[0].bg,
-        color_text: colors[0].text,
-        calendar_connected: false
-      });
-
-      return new Response(JSON.stringify({ code, tripId: newTrip.id }), {
-        status: 200,
-        headers: { 'Content-Type': 'application/json' }
-      });
-    }
-
-    // ── GET TRIP ─────────────────────────────────
-    if (method === 'GET' && action === 'get') {
-      const code = url.searchParams.get('code');
-      if (!code) throw new Error('No code provided');
-
-      const trips = await supabase(`trips?code=eq.${code}&select=*`);
-      if (!trips || trips.length === 0) {
-        return new Response(JSON.stringify({ error: 'Trip not found' }), { status: 404 });
-      }
-      const trip = trips[0];
-
-      const members = await supabase(`members?trip_id=eq.${trip.id}&select=*`);
-      const windows = await supabase(`free_windows?trip_id=eq.${trip.id}&select=*`);
-
-      return new Response(JSON.stringify({ trip, members, windows }), {
-        status: 200,
-        headers: { 'Content-Type': 'application/json' }
-      });
-    }
-
-    // ── ADD MEMBER ───────────────────────────────
-    if (method === 'POST' && action === 'join') {
-      const { code, name } = await req.json();
-
-      const trips = await supabase(`trips?code=eq.${code}&select=id`);
-      if (!trips || trips.length === 0) {
-        return new Response(JSON.stringify({ error: 'Trip not found' }), { status: 404 });
-      }
-      const tripId = trips[0].id;
-
-      const existing = await supabase(`members?trip_id=eq.${tripId}&select=id`);
-      const colorIdx = Math.min((existing?.length || 0), 3);
-      const colors = [
-        { bg: '#E3F5F0', text: '#1A8A72' },
-        { bg: '#EEECFB', text: '#4A3FBF' },
-        { bg: '#FBF4E3', text: '#8A6400' },
-        { bg: '#E6F1FB', text: '#0C447C' }
-      ];
-
-      const initials = name ? name.substring(0, 2).toUpperCase() : '??';
-      const [member] = await supabase('members', 'POST', {
-        trip_id: tripId,
-        name,
-        initials,
-        color_bg: colors[colorIdx].bg,
-        color_text: colors[colorIdx].text,
-        calendar_connected: false
-      });
-
-      return new Response(JSON.stringify({ memberId: member.id, tripId }), {
-        status: 200,
-        headers: { 'Content-Type': 'application/json' }
-      });
-    }
-
-    // ── UPLOAD CALENDAR ──────────────────────────
-    if (method === 'POST' && action === 'calendar') {
-      const { memberId, tripId, busyPeriods } = await req.json();
-
-      // Delete old busy periods for this member
-      await supabase(`busy_periods?member_id=eq.${memberId}`, 'DELETE');
-
-      // Insert new busy periods (only dates, never event titles)
-      if (busyPeriods && busyPeriods.length > 0) {
-        await supabase('busy_periods', 'POST',
-          busyPeriods.map(p => ({
-            member_id: memberId,
-            trip_id: tripId,
-            date_start: p.start,
-            date_end: p.end
-          }))
-        );
-      }
-
-      // Mark member as connected
-      await supabase(`members?id=eq.${memberId}`, 'PATCH', {
-        calendar_connected: true
-      });
-
-      // Recompute free windows for the trip
-      const windows = await computeFreeWindows(tripId);
-
-      return new Response(JSON.stringify({ success: true, windows }), {
-        status: 200,
-        headers: { 'Content-Type': 'application/json' }
-      });
-    }
-
-    // ── VOTE ─────────────────────────────────────
-    if (method === 'POST' && action === 'vote') {
-      const { memberId, vote } = await req.json();
-      await supabase(`members?id=eq.${memberId}`, 'PATCH', { vote });
-      return new Response(JSON.stringify({ success: true }), {
-        status: 200,
-        headers: { 'Content-Type': 'application/json' }
-      });
-    }
-
-    return new Response('Not found', { status: 404 });
-
-  } catch (err) {
-    return new Response(JSON.stringify({ error: err.message }), {
-      status: 500,
-      headers: { 'Content-Type': 'application/json' }
+    const res = await fetch('/api/chat', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        messages: assistantHistory,
+        tripContext: {
+          people: trip.people,
+          destination: trip.destination,
+          transport: trip.transport,
+          accommodation: trip.accommodation,
+          budget: trip.budget,
+          duration: trip.duration,
+          knowsDest: trip.knowsDest
+        }
+      })
     });
+    const data = await res.json();
+    document.getElementById('ap-typing')?.remove();
+    const reply = data.reply || data.error || "Sorry, I couldn't get a response. Try again!";
+    assistantHistory.push({ role: 'assistant', content: reply });
+    addAPMessage(reply, 'ai');
+  } catch(err) {
+    document.getElementById('ap-typing')?.remove();
+    addAPMessage("Something went wrong, please try again.", 'ai');
   }
 }
 
-async function computeFreeWindows(tripId) {
-  // Get all members
-  const members = await supabase(`members?trip_id=eq.${tripId}&calendar_connected=eq.true&select=id`);
-  if (!members || members.length < 2) return [];
-
-  // Get all busy periods
-  const busy = await supabase(`busy_periods?trip_id=eq.${tripId}&select=date_start,date_end`);
-
-  // Find 7-day windows in next 6 months where no one is busy
-  const windows = [];
-  const today = new Date();
-  const sixMonths = new Date(today);
-  sixMonths.setMonth(sixMonths.getMonth() + 6);
-
-  let d = new Date(today);
-  d.setDate(d.getDate() + 7); // start from next week
-
-  while (d < sixMonths && windows.length < 5) {
-    const windowEnd = new Date(d);
-    windowEnd.setDate(windowEnd.getDate() + 7);
-
-    const isBusy = (busy || []).some(b => {
-      const bs = new Date(b.date_start);
-      const be = new Date(b.date_end);
-      return bs < windowEnd && be > d;
-    });
-
-    if (!isBusy) {
-      const label = `${d.toLocaleDateString('en-GB', { month: 'short', day: 'numeric' })} – ${windowEnd.toLocaleDateString('en-GB', { month: 'short', day: 'numeric' })}`;
-      windows.push({
-        trip_id: tripId,
-        date_start: d.toISOString().split('T')[0],
-        date_end: windowEnd.toISOString().split('T')[0],
-        nights: 7,
-        label,
-        price_estimate: '~€200-400/pp',
-        price_level: 'mid'
-      });
-
-      // Save to DB
-      await supabase('free_windows', 'POST', windows[windows.length - 1]);
-    }
-    d.setDate(d.getDate() + 7);
-  }
-
-  return windows;
+function addAPMessage(text, type){
+  const msgs = document.getElementById('ap-messages');
+  const d = document.createElement('div');
+  d.className = `ap-msg ap-msg-${type}`;
+  d.innerHTML = `<div class="ap-bubble">${text}</div>`;
+  msgs.appendChild(d);
+  msgs.scrollTop = msgs.scrollHeight;
 }
+
+document.getElementById('ap-input').addEventListener('keydown', e=>{
+  if(e.key === 'Enter') sendAssistantMsg();
+});
+
+</script>
+
+<!-- FLOATING CHAT ASSISTANT -->
+<div class="chat-fab" id="chat-fab" onclick="toggleAssistant()">
+  <svg width="22" height="22" viewBox="0 0 22 22" fill="none">
+    <path d="M11 2C6.03 2 2 5.69 2 10.2c0 2.4 1.1 4.56 2.87 6.07L4 20l4.13-1.53C9.3 18.8 10.13 19 11 19c4.97 0 9-3.69 9-8.2C20 6.29 15.97 2 11 2z" fill="white"/>
+  </svg>
+  <span class="chat-fab-label">holid.ai assistant</span>
+</div>
+
+<div class="assistant-panel" id="assistant-panel">
+  <div class="ap-header">
+    <div>
+      <div class="ap-title">holid.ai assistant</div>
+      <div class="ap-sub">Ask anything about your trip</div>
+    </div>
+    <button class="ap-close" onclick="toggleAssistant()">✕</button>
+  </div>
+  <div class="ap-messages" id="ap-messages">
+    <div class="ap-msg ap-msg-ai">
+      <div class="ap-bubble">Hey! Ask me anything, best time to visit a destination, local tips, what to pack, hidden gems. I'm here to help 🌍</div>
+    </div>
+  </div>
+  <div class="ap-input-row">
+    <input class="ap-input" id="ap-input" type="text" placeholder="e.g. Is September good for Lisbon?" autocomplete="off"/>
+    <button class="ap-send" onclick="sendAssistantMsg()">
+      <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M2 8H14M14 8L9 3M14 8L9 13" stroke="white" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+    </button>
+  </div>
+</div>
+</body>
+</html>
