@@ -1249,6 +1249,8 @@ function personIcons(n){
 startConversation();
 
 // ── ASSISTANT PANEL ──
+const assistantHistory = [];
+
 function toggleAssistant(){
   const panel = document.getElementById('assistant-panel');
   panel.classList.toggle('open');
@@ -1257,28 +1259,47 @@ function toggleAssistant(){
   }
 }
 
-const apResponses = {
-  default: ["That's a great question! Generally speaking, shoulder season (April–May and September–October) offers the best mix of good weather and lower prices for most European destinations.", "Happy to help! The key is booking flights at least 6–8 weeks ahead for the best prices. Midweek flights are usually cheaper too.", "Great choice! Most Southern European cities are lovely in September — warm but not peak summer crowds or prices."],
-  lisbon: ["Lisbon is wonderful in September and October — warm, sunny, and much quieter than July/August. Alfama and Bairro Alto are the best neighbourhoods for a group stay.", "For a group in Lisbon, renting an Airbnb in Chiado or Príncipe Real gives you a central base. Avoid tourist traps on the waterfront — head inland for better food at half the price."],
-  barcelona: ["Barcelona in September is perfect — beach weather without the July/August chaos. Stay in Eixample or Gràcia for a more local feel away from Las Ramblas.", "For groups, Barcelona works well with a big Airbnb in the Gothic Quarter. Book Sagrada Família tickets well in advance — they sell out weeks ahead."],
-  budget: ["Budget tip: flights booked 6–8 weeks out are usually cheapest. Avoid checking bags if you can — budget airlines charge a lot for luggage.", "For accommodation, splitting an Airbnb between 4+ people almost always beats individual hotel rooms on price."],
-};
-
-function sendAssistantMsg(){
+async function sendAssistantMsg(){
   const input = document.getElementById('ap-input');
   const msg = input.value.trim();
   if(!msg) return;
   input.value = '';
   addAPMessage(msg, 'user');
-  setTimeout(()=>{
-    const t = msg.toLowerCase();
-    let responses = apResponses.default;
-    if(t.includes('lisbon') || t.includes('portugal')) responses = apResponses.lisbon;
-    else if(t.includes('barcelona') || t.includes('spain')) responses = apResponses.barcelona;
-    else if(t.includes('budget') || t.includes('cheap') || t.includes('price') || t.includes('cost')) responses = apResponses.budget;
-    const reply = responses[Math.floor(Math.random() * responses.length)];
+  assistantHistory.push({ role: 'user', content: msg });
+
+  // Show typing indicator
+  const msgs = document.getElementById('ap-messages');
+  const typing = document.createElement('div');
+  typing.className = 'ap-msg ap-msg-ai'; typing.id = 'ap-typing';
+  typing.innerHTML = '<div class="ap-bubble" style="color:var(--ink-faint)">...</div>';
+  msgs.appendChild(typing); msgs.scrollTop = msgs.scrollHeight;
+
+  try {
+    const res = await fetch('/api/chat', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        messages: assistantHistory,
+        tripContext: {
+          people: trip.people,
+          destination: trip.destination,
+          transport: trip.transport,
+          accommodation: trip.accommodation,
+          budget: trip.budget,
+          duration: trip.duration,
+          knowsDest: trip.knowsDest
+        }
+      })
+    });
+    const data = await res.json();
+    document.getElementById('ap-typing')?.remove();
+    const reply = data.reply || "Sorry, I couldn't get a response. Try again!";
+    assistantHistory.push({ role: 'assistant', content: reply });
     addAPMessage(reply, 'ai');
-  }, 700);
+  } catch(err) {
+    document.getElementById('ap-typing')?.remove();
+    addAPMessage("Something went wrong — please try again.", 'ai');
+  }
 }
 
 function addAPMessage(text, type){
