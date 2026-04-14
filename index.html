@@ -1293,7 +1293,7 @@ async function sendAssistantMsg(){
     });
     const data = await res.json();
     document.getElementById('ap-typing')?.remove();
-    const reply = data.reply || "Sorry, I couldn't get a response. Try again!";
+    const reply = data.reply || data.error || "Sorry, I couldn't get a response. Try again!";
     assistantHistory.push({ role: 'assistant', content: reply });
     addAPMessage(reply, 'ai');
   } catch(err) {
