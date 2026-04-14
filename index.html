@@ -29,10 +29,10 @@ header.scrolled{border-color:var(--sand-dark)}
 .header-sign{font-size:13px;color:var(--ink-muted);cursor:pointer;background:none;border:none;font-family:var(--font-b);transition:color .15s}
 .header-sign:hover{color:var(--ink)}
 
-/* MAIN LAYOUT — headline → input → conversation (scrolls) */
+/* MAIN LAYOUT, headline → input → conversation (scrolls) */
 .main{flex:1;display:flex;flex-direction:column;overflow:hidden}
 
-/* HERO — shrinks once conversation starts */
+/* HERO, shrinks once conversation starts */
 .hero{flex-shrink:0;text-align:center;padding:48px 24px 28px;transition:all .4s ease}
 .hero.active{padding:20px 24px 16px}
 .hero-eyebrow{font-size:11px;text-transform:uppercase;letter-spacing:.1em;color:var(--ink-faint);font-weight:500;margin-bottom:14px;transition:all .3s}
@@ -43,10 +43,10 @@ header.scrolled{border-color:var(--sand-dark)}
 .hero-sub{font-size:15px;color:var(--ink-muted);line-height:1.6;max-width:420px;margin:0 auto;transition:all .35s}
 .hero.active .hero-sub{opacity:0;max-height:0;overflow:hidden;margin:0}
 
-/* INPUT ZONE — pinned at bottom */
+/* INPUT ZONE, pinned at bottom */
 
 
-/* CONVERSATION — fills remaining space and scrolls */
+/* CONVERSATION, fills remaining space and scrolls */
 .convo-wrap{flex:1;overflow-y:auto;min-height:0}
 .convo-wrap::-webkit-scrollbar{width:4px}
 .convo-wrap::-webkit-scrollbar-thumb{background:var(--sand-dark);border-radius:4px}
@@ -266,6 +266,51 @@ header.scrolled{border-color:var(--sand-dark)}
 .ap-send{width:34px;height:34px;border-radius:9px;background:var(--accent);border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:opacity .15s}
 .ap-send:hover{opacity:.85}
 @media(max-width:400px){.assistant-panel{width:calc(100vw - 48px);right:24px}}
+
+/* ── CALENDAR STATUS CARD ── */
+.cal-status-card{
+  max-width:660px;margin:0 auto 0;padding:0 24px;
+  transition:opacity .3s;
+}
+.csc-inner{
+  background:var(--white);border-radius:var(--radius-lg, 14px);
+  border:1.5px solid var(--accent);padding:16px 18px;
+}
+.csc-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}
+.csc-title{font-size:13px;font-weight:500;color:var(--ink)}
+.csc-subtitle{font-size:11px;color:var(--ink-muted);margin-top:2px}
+.csc-badge{font-size:11px;font-weight:500;padding:3px 10px;border-radius:20px;background:var(--teal-dim);color:var(--teal)}
+.csc-members{display:flex;flex-direction:column;gap:6px;margin-bottom:14px}
+.csc-member{display:flex;align-items:center;gap:10px}
+.csc-av{width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:500;flex-shrink:0}
+.csc-name{flex:1;font-size:13px;font-weight:500}
+.csc-status{font-size:11px;font-weight:500;padding:2px 9px;border-radius:20px}
+.csc-connected{background:var(--teal-dim);color:var(--teal)}
+.csc-waiting{background:var(--sand-mid);color:var(--ink-muted)}
+.csc-you{background:var(--accent-dim);color:var(--accent)}
+.csc-actions{display:flex;gap:8px}
+.csc-connect-btn{flex:1;padding:10px;background:var(--accent);color:var(--white);border:none;border-radius:10px;font-family:var(--font-b);font-size:13px;font-weight:500;cursor:pointer;transition:opacity .15s}
+.csc-connect-btn:hover{opacity:.85}
+.csc-connect-btn.connected{background:var(--teal);cursor:default}
+.csc-share-btn{padding:10px 14px;background:var(--sand);border:1px solid var(--sand-dark);border-radius:10px;font-family:var(--font-b);font-size:13px;font-weight:500;color:var(--ink-muted);cursor:pointer;white-space:nowrap;transition:all .15s}
+.csc-share-btn:hover{border-color:var(--ink-faint);color:var(--ink)}
+.csc-privacy{font-size:11px;color:var(--ink-faint);text-align:center;margin-top:10px}
+.csc-privacy a{color:var(--ink-muted);text-decoration:none}
+.csc-privacy a:hover{color:var(--accent)}
+
+/* ── COLLAPSIBLE CAL CARD ── */
+.csc-collapsed{display:flex;align-items:center;justify-content:space-between;cursor:pointer;padding:2px 0;user-select:none}
+.csc-collapsed-left{display:flex;align-items:center;gap:10px}
+.csc-dot{width:8px;height:8px;border-radius:50%;background:var(--sand-dark);flex-shrink:0;transition:background .3s}
+.csc-dot.active{background:var(--teal)}
+.csc-collapsed-text{display:flex;align-items:baseline;gap:0;flex-wrap:wrap}
+.csc-collapsed-sub{font-size:12px;color:var(--ink-muted)}
+.csc-collapsed-right{display:flex;align-items:center;gap:8px}
+.csc-chevron{font-size:16px;color:var(--ink-muted);transition:transform .25s;line-height:1}
+.csc-chevron.open{transform:rotate(90deg)}
+.csc-expanded{overflow:hidden;max-height:0;transition:max-height .3s ease;opacity:0;transition:max-height .3s ease, opacity .2s ease}
+.csc-expanded.open{max-height:400px;opacity:1}
+.csc-divider{height:1px;background:var(--sand-mid);margin:12px 0}
 </style>
 </head>
 <body>
@@ -282,14 +327,53 @@ header.scrolled{border-color:var(--sand-dark)}
 
 <div class="main" id="main">
 
-  <!-- 1. HEADLINE — always at top, shrinks once chat starts -->
+  <!-- 1. HEADLINE, always at top, shrinks once chat starts -->
   <div class="hero" id="hero">
     <div class="hero-eyebrow">AI-powered group travel planning</div>
     <h1 class="hero-headline">Finally getting that trip<br><em>out of the group chat.</em></h1>
-    <p class="hero-sub">Sync everyone's calendars, find when you're all free, and get the cheapest flights and accommodation — in one conversation.</p>
+    <p class="hero-sub">Sync everyone's calendars, find when you're all free, and get the cheapest flights and accommodation, in one conversation.</p>
   </div>
 
-  <!-- 2. CONVERSATION — people picker + all messages appear here -->
+  <!-- 2. CALENDAR STATUS CARD, collapsible -->
+  <div class="cal-status-card" id="cal-status-card">
+    <div class="csc-inner">
+
+      <!-- COLLAPSED ROW, always visible, tap to expand -->
+      <div class="csc-collapsed" id="csc-collapsed" onclick="toggleCalCard()">
+        <div class="csc-collapsed-left">
+          <div class="csc-dot" id="csc-dot"></div>
+          <div class="csc-collapsed-text">
+            <span class="csc-title">Group calendars</span>
+            <span class="csc-collapsed-sub" id="csc-collapsed-sub">, tap to connect</span>
+          </div>
+        </div>
+        <div class="csc-collapsed-right">
+          <div class="csc-badge" id="csc-badge">0 / 1</div>
+          <div class="csc-chevron" id="csc-chevron">›</div>
+        </div>
+      </div>
+
+      <!-- EXPANDED CONTENT, hidden by default -->
+      <div class="csc-expanded" id="csc-expanded">
+        <div class="csc-divider"></div>
+        <div class="csc-members" id="csc-members">
+          <div class="csc-member">
+            <div class="csc-av" style="background:var(--accent-dim);color:var(--accent)">You</div>
+            <div class="csc-name">You</div>
+            <div class="csc-status csc-waiting" id="csc-you-status">Not connected</div>
+          </div>
+        </div>
+        <div class="csc-actions">
+          <button class="csc-connect-btn" id="csc-connect-btn" onclick="openCalModal()">Connect your calendar</button>
+          <button class="csc-share-btn" id="csc-share-btn" onclick="shareCalLink()">Invite friends</button>
+        </div>
+        <div class="csc-privacy">We only see busy/free, never your event titles. <a href="#" onclick="openPriv();return false">Learn more →</a></div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- 3. CONVERSATION, people picker + all messages appear here -->
   <div class="convo-wrap" id="convo-wrap">
     <div class="convo-inner">
       <div class="convo" id="convo"></div>
@@ -304,7 +388,7 @@ header.scrolled{border-color:var(--sand-dark)}
 <div class="modal-bg" id="cal-modal" onclick="closeCalModal(event)">
   <div class="modal">
     <div class="modal-title">Connect calendars</div>
-    <div class="modal-sub">We only read busy/free blocks — your event titles are never visible to us or your friends.</div>
+    <div class="modal-sub">We only read busy/free blocks, your event titles are never visible to us or your friends.</div>
     <div class="cal-opt" id="co-google" onclick="connectCal('google')">
       <div class="cal-opt-icon" style="background:#FEF3F0"><svg width="18" height="18" viewBox="0 0 20 20"><rect x="3" y="3" width="14" height="14" rx="2" fill="#EA4335"/><path d="M7 10h6M10 7v6" stroke="white" stroke-width="1.5" stroke-linecap="round"/></svg></div>
       <div><div class="cal-opt-name">Google Calendar</div><div class="cal-opt-sub" id="cs-google">Connect with Google</div></div>
@@ -336,17 +420,17 @@ header.scrolled{border-color:var(--sand-dark)}
       </div>
       <div class="p-sec">
         <div class="p-lbl">What we never read</div>
-        <div class="p-row"><div class="p-icon no"><svg width="13" height="13" viewBox="0 0 14 14" fill="none"><path d="M3 3L11 11M11 3L3 11" stroke="#E8622A" stroke-width="1.5" stroke-linecap="round"/></svg></div><div><div class="p-row-title">Event titles</div><div class="p-row-body">"Doctor appointment", "Job interview", "Therapy" — we never see any of this.</div></div></div>
+        <div class="p-row"><div class="p-icon no"><svg width="13" height="13" viewBox="0 0 14 14" fill="none"><path d="M3 3L11 11M11 3L3 11" stroke="#E8622A" stroke-width="1.5" stroke-linecap="round"/></svg></div><div><div class="p-row-title">Event titles</div><div class="p-row-body">"Doctor appointment", "Job interview", "Therapy", we never see any of this.</div></div></div>
         <div class="p-row"><div class="p-icon no"><svg width="13" height="13" viewBox="0 0 14 14" fill="none"><path d="M3 3L11 11M11 3L3 11" stroke="#E8622A" stroke-width="1.5" stroke-linecap="round"/></svg></div><div><div class="p-row-title">Event descriptions or notes</div><div class="p-row-body">Any text you've added to a calendar event is not accessed.</div></div></div>
-        <div class="p-row"><div class="p-icon no"><svg width="13" height="13" viewBox="0 0 14 14" fill="none"><path d="M3 3L11 11M11 3L3 11" stroke="#E8622A" stroke-width="1.5" stroke-linecap="round"/></svg></div><div><div class="p-row-title">Who the event is with</div><div class="p-row-body">Guest lists, attendees, organisers — none of this is read or stored.</div></div></div>
+        <div class="p-row"><div class="p-icon no"><svg width="13" height="13" viewBox="0 0 14 14" fill="none"><path d="M3 3L11 11M11 3L3 11" stroke="#E8622A" stroke-width="1.5" stroke-linecap="round"/></svg></div><div><div class="p-row-title">Who the event is with</div><div class="p-row-body">Guest lists, attendees, organisers, none of this is read or stored.</div></div></div>
       </div>
       <div class="p-sec">
         <div class="p-lbl">What we do with the data</div>
         <div class="p-row"><div class="p-icon ok"><svg width="13" height="13" viewBox="0 0 14 14" fill="none"><path d="M2 7L6 11L12 3" stroke="#1A8A72" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></div><div><div class="p-row-title">Find overlapping free windows</div><div class="p-row-body">We compare busy/free blocks across your group to find dates when everyone is available. That's the only computation we run.</div></div></div>
         <div class="p-row"><div class="p-icon no"><svg width="13" height="13" viewBox="0 0 14 14" fill="none"><path d="M3 3L11 11M11 3L3 11" stroke="#E8622A" stroke-width="1.5" stroke-linecap="round"/></svg></div><div><div class="p-row-title">We never sell calendar data</div><div class="p-row-body">Your availability is never shared with advertisers, data brokers, or any third party.</div></div></div>
-        <div class="p-row"><div class="p-icon no"><svg width="13" height="13" viewBox="0 0 14 14" fill="none"><path d="M3 3L11 11M11 3L3 11" stroke="#E8622A" stroke-width="1.5" stroke-linecap="round"/></svg></div><div><div class="p-row-title">We never store raw calendar data</div><div class="p-row-body">We store only the computed free windows — not the underlying events. Disconnect anytime.</div></div></div>
+        <div class="p-row"><div class="p-icon no"><svg width="13" height="13" viewBox="0 0 14 14" fill="none"><path d="M3 3L11 11M11 3L3 11" stroke="#E8622A" stroke-width="1.5" stroke-linecap="round"/></svg></div><div><div class="p-row-title">We never store raw calendar data</div><div class="p-row-body">We store only the computed free windows, not the underlying events. Disconnect anytime.</div></div></div>
       </div>
-      <div class="p-note">holid.ai uses standard OAuth — the same authentication used by Calendly, Notion, and Zoom. You grant read-only access and can revoke it anytime from your Google, Apple, or Microsoft account settings.</div>
+      <div class="p-note">holid.ai uses standard OAuth, the same authentication used by Calendly, Notion, and Zoom. You grant read-only access and can revoke it anytime from your Google, Apple, or Microsoft account settings.</div>
     </div>
   </div>
 </div>
@@ -402,7 +486,66 @@ function closeCalModal(e){ if(!e||e.target===document.getElementById('cal-modal'
 function connectCal(type){
   document.getElementById('co-'+type).classList.add('done');
   document.getElementById('cs-'+type).textContent='Connected ✓';
-  if(!calConnected){ calConnected=true; }
+  if(!calConnected){
+    calConnected=true;
+    // Update the status card
+    const youStatus = document.getElementById('csc-you-status');
+    if(youStatus){ youStatus.textContent='Connected ✓'; youStatus.className='csc-status csc-connected'; }
+    const connectBtn = document.getElementById('csc-connect-btn');
+    if(connectBtn){ connectBtn.textContent='Calendar connected ✓'; connectBtn.classList.add('connected'); }
+    const dot = document.getElementById('csc-dot');
+    if(dot) dot.classList.add('active');
+    const sub = document.getElementById('csc-collapsed-sub');
+    if(sub) sub.textContent = ', your calendar connected';
+    updateCalBadge();
+  }
+}
+
+function updateCalBadge(){
+  const members = document.querySelectorAll('#csc-members .csc-member');
+  const connected = document.querySelectorAll('#csc-members .csc-connected').length;
+  const badge = document.getElementById('csc-badge');
+  if(badge) badge.textContent = `${connected} / ${members.length} connected`;
+  if(connected === members.length && members.length > 1){
+    badge.style.background='var(--teal-dim)';
+    badge.style.color='var(--teal)';
+  }
+}
+
+function shareCalLink(){
+  // Build share link and copy to clipboard
+  const people = trip.people || 4;
+  const code = Math.random().toString(36).substr(2,6).toUpperCase();
+  const link = `${window.location.origin}/room.html?code=${code}`;
+
+  // Add friend placeholders to the card
+  const membersEl = document.getElementById('csc-members');
+  if(membersEl && membersEl.querySelectorAll('.csc-member').length === 1){
+    const colors = [
+      {bg:'#E3F5F0',col:'#1A8A72',init:'S'},
+      {bg:'#EEECFB',col:'#4A3FBF',init:'J'},
+      {bg:'#FBF4E3',col:'#8A6400',init:'L'},
+      {bg:'var(--sand-dark)',col:'var(--ink-muted)',init:'+'},
+    ];
+    const count = Math.min((people||4)-1, 4);
+    const names = ['Friend 1','Friend 2','Friend 3','Friend 4'];
+    for(let i=0;i<count;i++){
+      const c = colors[i] || colors[3];
+      const row = document.createElement('div');
+      row.className='csc-member';
+      row.innerHTML=`<div class="csc-av" style="background:${c.bg};color:${c.col}">${c.init}</div><div class="csc-name">${names[i]}</div><div class="csc-status csc-waiting">Waiting…</div>`;
+      membersEl.appendChild(row);
+    }
+    updateCalBadge();
+  }
+
+  navigator.clipboard.writeText(link).then(()=>{
+    const btn = document.getElementById('csc-share-btn');
+    if(btn){ btn.textContent='Link copied! ✓'; setTimeout(()=>btn.textContent='Invite friends 🔗', 2500); }
+  }).catch(()=>{
+    // Fallback, show the link in a prompt
+    prompt('Share this link with your friends:', link);
+  });
 }
 function openPriv(){ document.getElementById('priv-bg').classList.add('open'); }
 function closePriv(e){ if(!e||e.target===document.getElementById('priv-bg')) document.getElementById('priv-bg').classList.remove('open'); }
@@ -461,7 +604,7 @@ function renderTripRoom(room){
         <div class="room-link-text">holid.ai/room/${room.code}</div>
         <button class="copy-btn" onclick="copyLink('${link}', this)">Copy link</button>
       </div>
-      <div style="font-size:11px;color:var(--ink-muted);margin-bottom:10px">Share this link — each friend uploads only their own calendar</div>
+      <div style="font-size:11px;color:var(--ink-muted);margin-bottom:10px">Share this link, each friend uploads only their own calendar</div>
       ${membersHTML}
       ${windowsHTML}
     </div>`;
@@ -478,13 +621,13 @@ function copyLink(link, btn){
 // Stores answers to the onboarding questions
 const trip = { mode:null, intent:'', people:null, destination:null, knowsDest:null, transport:null, accommodation:null, budget:null, duration:null };
 
-// Question flow — each step asks one thing
+// Question flow, each step asks one thing
 // steps: -1=mode select, 0=first message/people, 1=people, 2=destination?, 3=transport, 4=accommodation, 5=budget, 6=duration, 7=findWindows, 8=dests, 9=summary, 10=tripRoom
 function respond(text){
   const t = text.toLowerCase();
 
   if(step === 0){
-    // First message — save intent, ask how many people
+    // First message, save intent, ask how many people
     trip.intent = text;
     step = 1;
     // Extract number if mentioned
@@ -496,7 +639,7 @@ function respond(text){
     if(trip.people){
       askTransport();
     } else {
-      addAI(`<p>Sounds like a great trip. First — how many people are going?</p>
+      addAI(`<p>Sounds like a great trip. First, how many people are going?</p>
         <div class="sugs">
           <div class="sug" onclick="pickPeople(2)">Just 2</div>
           <div class="sug" onclick="pickPeople(3)">3 people</div>
@@ -525,7 +668,7 @@ function respond(text){
   }
 
   if(step === 3){
-    // Calendar step — if they typed something move on
+    // Calendar step, if they typed something move on
     askTransport();
     return;
   }
@@ -558,7 +701,7 @@ function respond(text){
   if(step === 9){ showSummary(text); return; }
   if(step === 10){ showTripRoom(text); return; }
 
-  addAI(`<p>Trip room is live — I'll keep an eye on prices. Anything else?</p>
+  addAI(`<p>Trip room is live, I'll keep an eye on prices. Anything else?</p>
     <div class="sugs">
       <div class="sug" onclick="newTrip()">Plan another trip</div>
       <div class="sug" onclick="submit('Show me the cost split')">Cost split</div>
@@ -578,7 +721,7 @@ function askKnowsDest(){
   addAI(`<p>Do you already know where you want to go?</p>
     <div class="sugs">
       <div class="sug sug-lg" onclick="pickKnowsDest(true)">Yes, I have a place in mind</div>
-      <div class="sug sug-lg" onclick="pickKnowsDest(false)">Not yet — help me find somewhere</div>
+      <div class="sug sug-lg" onclick="pickKnowsDest(false)">Not yet, help me find somewhere</div>
     </div>`);
 }
 
@@ -612,7 +755,7 @@ function pickKnowsDest(knows){
         </div>`);
     }, 700);
   } else {
-    addUser('Not yet — help me find somewhere');
+    addUser('Not yet, help me find somewhere');
     showTyping();
     setTimeout(()=>{ removeTyping(); askCalendar(); }, 700);
   }
@@ -648,23 +791,13 @@ function submitCity(){
 }
 
 function askCalendar(){
+  // Calendar card is now always visible at top, skip this step
   step = 3;
-  addAI(`<p>To find the best dates for your group, connect your calendars — we\'ll check when everyone\'s free.</p>
-    <div class="cal-connect-card">
-      <div class="cal-connect-icon">📅</div>
-      <div class="cal-connect-text">
-        <div class="cal-connect-title">Connect calendars</div>
-        <div class="cal-connect-sub">We only see busy/free — never your event titles</div>
-      </div>
-      <button class="cal-connect-btn" onclick="openCalModal()">Connect</button>
-    </div>
-    <div class="sugs" style="margin-top:10px">
-      <div class="sug" onclick="skipCalendar()">Skip — use example data</div>
-    </div>`);
+  askTransport();
 }
 
 function skipCalendar(){
-  addUser('Skip — use example data');
+  addUser('Skip, use example data');
   showTyping();
   setTimeout(()=>{ removeTyping(); askTransport(); }, 700);
 }
@@ -743,7 +876,7 @@ function pickBudget(val){
 
 function askDuration(){
   step = 7;
-  addAI(`<p>Last one — how long are you thinking?</p>
+  addAI(`<p>Last one, how long are you thinking?</p>
     <div class="sugs">
       <div class="sug" onclick="pickDuration('A long weekend (3–4 nights)')">Long weekend</div>
       <div class="sug" onclick="pickDuration('A full week (6–7 nights)')">Full week</div>
@@ -826,7 +959,7 @@ function findWindows(){
   const accType = trip.accommodation ? trip.accommodation.split(' ').slice(1).join(' ').toLowerCase() : 'accommodation';
   const budgetNote = trip.budget === 'cheap' ? 'budget-conscious' : trip.budget === 'splurge' ? 'no-limits' : 'mid-range';
 
-  addAI(`<p>Got it — ${people} people${destNote}, ${accType}, ${budgetNote} vibe. ${calConnected ? 'Scanned all calendars.' : 'Checked example calendars.'} Here are the windows where <strong>everyone's free</strong>:</p>
+  addAI(`<p>Got it, ${people} people${destNote}, ${accType}, ${budgetNote} vibe. ${calConnected ? 'Scanned all calendars.' : 'Checked example calendars.'} Here are the windows where <strong>everyone's free</strong>:</p>
     <div class="cards">
       <div class="w-chip" onclick="pickW(this,'Oct 17–22','2025-10-17','2025-10-22')"><div class="wc-date">Oct 17 – 22</div><div class="wc-meta">5 nights · low season · all free</div><div class="wc-price ok">cheapest window</div></div>
       <div class="w-chip" onclick="pickW(this,'Sep 4–11','2025-09-04','2025-09-11')"><div class="wc-date">Sep 4 – 11</div><div class="wc-meta">7 nights · shoulder season · all free</div><div class="wc-price ok">best value</div></div>
@@ -845,7 +978,7 @@ function getAirportCode(dest){
 }
 
 function getEstimatedPrice(dest, budget, carrier){
-  // Rough estimates from Amsterdam — purely indicative
+  // Rough estimates from Amsterdam, purely indicative
   const base = {
     Lisbon:89, Barcelona:79, Athens:109, Marrakech:129,
     Berlin:59, Paris:69, Rome:99, Hamburg:49,
@@ -1016,7 +1149,7 @@ function showSummary(text){
 
   const vibeNote = trip.budget==='cheap'?'Filtered for the best value options.':trip.budget==='splurge'?'Showing top-rated options.':'Good balance of price and quality.';
 
-  addAI(`<p>Here's what I found for <strong>${dest}</strong> — tap to open real results:</p>
+  addAI(`<p>Here's what I found for <strong>${dest}</strong>, tap to open real results:</p>
     <div class="booking-stack">
       ${transportCard}
       ${accCard}
@@ -1043,9 +1176,9 @@ function showTripRoom(text){
     if(cards.length>0) cards[cards.length-1].outerHTML=renderTripRoom(r);
   }, 4000);
 
-  addAI(`<p>Trip room created. Share this link — each friend opens it and uploads only their own calendar. Nobody sees anyone else's agenda.</p>
+  addAI(`<p>Trip room created. Share this link, each friend opens it and uploads only their own calendar. Nobody sees anyone else's agenda.</p>
     ${renderTripRoom(room)}
-    <p style="margin-top:10px;font-size:13px;color:var(--ink-muted)">I'm watching prices too — I'll alert you if ${trip.transport?.includes('Car')?'fuel costs change':trip.transport?.includes('Train')?'train prices move':'flights move'}.</p>
+    <p style="margin-top:10px;font-size:13px;color:var(--ink-muted)">I'm watching prices too, I'll alert you if ${trip.transport?.includes('Car')?'fuel costs change':trip.transport?.includes('Train')?'train prices move':'flights move'}.</p>
     <div class="sugs">
       <div class="sug" onclick="openUpload()">Upload my .ics now</div>
       <div class="sug" onclick="submit('Set a price alert')">Set price alert</div>
@@ -1176,6 +1309,16 @@ function newTrip(){
   startConversation();
 }
 
+// ── CALENDAR CARD TOGGLE ──
+let calCardOpen = false;
+function toggleCalCard(){
+  calCardOpen = !calCardOpen;
+  const expanded = document.getElementById('csc-expanded');
+  const chevron = document.getElementById('csc-chevron');
+  if(expanded) expanded.classList.toggle('open', calCardOpen);
+  if(chevron) chevron.classList.toggle('open', calCardOpen);
+}
+
 // ── AUTO-START ──
 function startConversation(){
   step = 0;
@@ -1228,8 +1371,8 @@ function pickMode(mode){
           <div class="people-card" onclick="pickPeopleWindow(6)"><div class="pc-icons">${personIcons(6)}</div><div class="pc-num">6+</div><div class="pc-label">Big group</div></div>
         </div>`);
     } else {
-      // Full flow or dates+flights+acc — ask people first
-      addAI(`<p>${mode === 'dates-flights-acc' ? 'Perfect — let\'s find the best dates and prices.' : 'Let\'s plan the whole thing.'} First, how many people are going?</p>
+      // Full flow or dates+flights+acc, ask people first
+      addAI(`<p>${mode === 'dates-flights-acc' ? 'Perfect, let\'s find the best dates and prices.' : 'Let\'s plan the whole thing.'} First, how many people are going?</p>
         <div class="people-grid">
           <div class="people-card" onclick="pickPeople(2)"><div class="pc-icons">${personIcons(2)}</div><div class="pc-num">2</div><div class="pc-label">Just you two</div></div>
           <div class="people-card" onclick="pickPeople(3)"><div class="pc-icons">${personIcons(3)}</div><div class="pc-num">3</div><div class="pc-label">Small group</div></div>
@@ -1337,7 +1480,7 @@ async function sendAssistantMsg(){
     addAPMessage(reply, 'ai');
   } catch(err) {
     document.getElementById('ap-typing')?.remove();
-    addAPMessage("Something went wrong — please try again.", 'ai');
+    addAPMessage("Something went wrong, please try again.", 'ai');
   }
 }
 
@@ -1374,7 +1517,7 @@ document.getElementById('ap-input').addEventListener('keydown', e=>{
   </div>
   <div class="ap-messages" id="ap-messages">
     <div class="ap-msg ap-msg-ai">
-      <div class="ap-bubble">Hey! Ask me anything — best time to visit a destination, local tips, what to pack, hidden gems. I'm here to help 🌍</div>
+      <div class="ap-bubble">Hey! Ask me anything, best time to visit a destination, local tips, what to pack, hidden gems. I'm here to help 🌍</div>
     </div>
   </div>
   <div class="ap-input-row">
