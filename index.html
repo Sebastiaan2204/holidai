@@ -378,6 +378,14 @@ function addAI(html){
   d.innerHTML=`<div class="ai-av">${aiSvg()}</div><div class="ai-body"><div class="ai-label">holid.ai</div><div class="ai-text">${html}</div></div>`;
   convoEl.appendChild(d); scrollD(); return d.querySelector('.ai-text');
 }
+
+function lockChoices(){
+  // Disable all tappable choices in the conversation so they can't be spammed
+  convoEl.querySelectorAll('.sug,.people-card,.vibe-card,.mode-card,.w-chip,.d-chip,.cal-connect-btn').forEach(el=>{
+    el.style.pointerEvents='none';
+    el.style.opacity=el.classList.contains('sel')?'1':'0.4';
+  });
+}
 function showTyping(){
   const d=document.createElement('div'); d.className='typing-wrap'; d.id='typing';
   d.innerHTML=`<div class="ai-av">${aiSvg()}</div><div class="tdots"><div class="td"></div><div class="td"></div><div class="td"></div></div>`;
@@ -558,6 +566,7 @@ function respond(text){
 }
 
 function pickPeople(n){
+  lockChoices();
   trip.people = n;
   addUser(n === 6 ? '6 or more' : n + ' people');
   showTyping();
@@ -583,6 +592,7 @@ function askDestination(){
 }
 
 function pickKnowsDest(knows){
+  lockChoices();
   trip.knowsDest = knows;
   if(knows){
     addUser('Yes, I have a place in mind');
@@ -609,6 +619,7 @@ function pickKnowsDest(knows){
 }
 
 function pickDestination(dest){
+  lockChoices();
   if(dest === 'Other'){
     addAI(`<p>Where are you thinking?</p>
       <div class="inline-input-wrap">
@@ -665,11 +676,13 @@ function askTransport(){
       <div class="sug" onclick="pickTransport('✈️ Plane')">✈️ Plane</div>
       <div class="sug" onclick="pickTransport('🚂 Train')">🚂 Train</div>
       <div class="sug" onclick="pickTransport('🚗 Car')">🚗 Car</div>
+      <div class="sug" onclick="pickTransport('🚢 Boat')">🚢 Boat</div>
       <div class="sug" onclick="pickTransport('No preference')">No preference</div>
     </div>`);
 }
 
 function pickTransport(val){
+  lockChoices();
   trip.transport = val;
   addUser(val);
   showTyping();
@@ -684,11 +697,13 @@ function askAccommodation(){
       <div class="sug" onclick="pickAccommodation('🏠 Airbnb')">🏠 Airbnb</div>
       <div class="sug" onclick="pickAccommodation('🛏️ Hostel')">🛏️ Hostel</div>
       <div class="sug" onclick="pickAccommodation('⛺ Camping')">⛺ Camping</div>
+      <div class="sug" onclick="pickAccommodation('🏡 Own accommodation')">🏡 Own accommodation</div>
       <div class="sug" onclick="pickAccommodation('No preference')">No preference</div>
     </div>`);
 }
 
 function pickAccommodation(val){
+  lockChoices();
   trip.accommodation = val;
   addUser(val);
   showTyping();
@@ -718,6 +733,7 @@ function askBudget(){
 }
 
 function pickBudget(val){
+  lockChoices();
   trip.budget = val;
   const labels = { cheap:'Keep it cheap 🪙', reasonable:'Reasonable ✌️', splurge:'Splash out 🥂' };
   addUser(labels[val] || val);
@@ -733,10 +749,31 @@ function askDuration(){
       <div class="sug" onclick="pickDuration('A full week (6–7 nights)')">Full week</div>
       <div class="sug" onclick="pickDuration('10+ nights')">10+ nights</div>
       <div class="sug" onclick="pickDuration('Not sure yet')">Not sure yet</div>
+      <div class="sug" onclick="showDurationInput()">I know exactly…</div>
+    </div>
+    <div class="inline-input-wrap" id="duration-input-wrap" style="display:none;margin-top:10px">
+      <input class="inline-input" id="duration-input" type="text" placeholder="e.g. 5 nights, 10 days…" autocomplete="off"/>
+      <button class="inline-send" onclick="submitDuration()">Go →</button>
     </div>`);
 }
 
+function showDurationInput(){
+  lockChoices();
+  const wrap = document.getElementById('duration-input-wrap');
+  if(wrap){ wrap.style.display='flex'; setTimeout(()=>document.getElementById('duration-input').focus(),100); }
+  document.getElementById('duration-input').addEventListener('keydown', e=>{ if(e.key==='Enter') submitDuration(); });
+}
+
+function submitDuration(){
+  const el = document.getElementById('duration-input');
+  if(!el) return;
+  const val = el.value.trim();
+  if(!val) return;
+  pickDuration(val);
+}
+
 function pickDuration(val){
+  lockChoices();
   trip.duration = val;
   addUser(val);
   showTyping();
@@ -1109,6 +1146,7 @@ let pickedWindow='Sep 4–11';
 let pickedDateIn='2025-09-04';
 let pickedDateOut='2025-09-11';
 function pickW(el,label,dateIn,dateOut){
+  lockChoices();
   document.querySelectorAll('.w-chip').forEach(c=>c.classList.remove('sel'));
   el.classList.add('sel');
   pickedWindow=label;
@@ -1125,9 +1163,10 @@ function pickW(el,label,dateIn,dateOut){
   }
 }
 function pickD(el,name){
+  lockChoices();
   document.querySelectorAll('.d-chip').forEach(c=>c.classList.remove('sel'));
   el.classList.add('sel');
-  setTimeout(()=>submit(`Let's go to ${name}`),200);
+  setTimeout(()=>submit(`Let\'s go to ${name}`),200);
 }
 function newTrip(){
   step=0; currentRoom=null;
