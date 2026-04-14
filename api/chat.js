@@ -54,7 +54,7 @@ Important rules:
 
     if (!response.ok) {
       const error = await response.text();
-      return new Response(JSON.stringify({ error }), {
+      return new Response(JSON.stringify({ error: `API Error ${response.status}: ${error}` }), {
         status: response.status,
         headers: { 'Content-Type': 'application/json' }
       });
@@ -72,7 +72,7 @@ Important rules:
     });
 
   } catch (err) {
-    return new Response(JSON.stringify({ error: err.message }), {
+    return new Response(JSON.stringify({ error: err.message, stack: err.stack }), {
       status: 500,
       headers: { 'Content-Type': 'application/json' }
     });
