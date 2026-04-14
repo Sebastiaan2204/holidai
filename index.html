@@ -561,23 +561,98 @@ function openPriv(){ document.getElementById('priv-bg').classList.add('open'); }
 function closePriv(e){ if(!e||e.target===document.getElementById('priv-bg')) document.getElementById('priv-bg').classList.remove('open'); }
 
 // ── TRIP ROOM ──
-function generateCode(){ return Math.random().toString(36).substr(2,6).toUpperCase(); }
+// ── SUPABASE TRIP API ──
+async function apiTrip(action, body = null) {
+  const url = `/api/trip?action=${action}`;
+  const res = await fetch(url, {
+    method: body ? 'POST' : 'GET',
+    headers: { 'Content-Type': 'application/json' },
+    body: body ? JSON.stringify(body) : null
+  });
+  return res.json();
+}
 
-function createTripRoom(destination, dates){
-  const code = generateCode();
-  const room = { code, destination, dates, members:[
-    {name:'You', initials:'ME', col:'#FDF0EB', tcol:'#E8622A', status:'uploaded'},
-    {name:'Sara M.', initials:'SM', col:'#E3F5F0', tcol:'#1A8A72', status:'waiting'},
-    {name:'Jonas K.', initials:'JK', col:'#EEECFB', tcol:'#4A3FBF', status:'waiting'},
-    {name:'Lena B.', initials:'LB', col:'#FBF4E3', tcol:'#8A6400', status:'waiting'},
-  ], windows:[] };
-  localStorage.setItem('room_'+code, JSON.stringify(room));
-  currentRoom = room;
-  return room;
+async function apiGetTrip(code) {
+  const res = await fetch(`/api/trip?action=get&code=${code}`);
+  return res.json();
+}
+
+async function createTripRoom(destination, dates) {
+  try {
+    const data = await apiTrip('create', {
+      trip: {
+        destination,
+        dates,
+        people: trip.people,
+        transport: trip.transport,
+        accommodation: trip.accommodation,
+        budget: trip.budget,
+        duration: trip.duration
+      },
+      ownerName: 'You'
+    });
+
+    if (data.error) throw new Error(data.error);
+
+    const room = {
+      code: data.code,
+      tripId: data.tripId,
+      destination,
+      dates,
+      members: [{ name:'You', initials:'ME', col:'#FDF0EB', tcol:'#E8622A', status:'uploaded' }],
+      windows: []
+    };
+    currentRoom = room;
+    return room;
+  } catch(err) {
+    // Fallback to local if API fails
+    console.warn('Supabase unavailable, using local:', err);
+    const code = Math.random().toString(36).substr(2,6).toUpperCase();
+    const room = { code, destination, dates, members:[
+      {name:'You', initials:'ME', col:'#FDF0EB', tcol:'#E8622A', status:'uploaded'}
+    ], windows:[] };
+    currentRoom = room;
+    return room;
+  }
+}
+
+async function refreshTripRoom(code) {
+  try {
+    const data = await apiGetTrip(code);
+    if (data.error || !data.trip) return null;
+
+    const colors = [
+      {col:'#FDF0EB', tcol:'#E8622A'},
+      {col:'#E3F5F0', tcol:'#1A8A72'},
+      {col:'#EEECFB', tcol:'#4A3FBF'},
+      {col:'#FBF4E3', tcol:'#8A6400'}
+    ];
+
+    const members = (data.members || []).map((m, i) => ({
+      name: m.name,
+      initials: m.initials,
+      col: m.color_bg || colors[i % colors.length].col,
+      tcol: m.color_text || colors[i % colors.length].tcol,
+      status: m.calendar_connected ? 'uploaded' : 'waiting'
+    }));
+
+    const windows = (data.windows || []).map(w => ({
+      dates: w.label,
+      nights: w.nights + ' nights',
+      price: w.price_estimate,
+      bg: '#E3F5F0',
+      col: '#1A8A72'
+    }));
+
+    return { ...data.trip, code, members, windows };
+  } catch(err) {
+    return null;
+  }
 }
 
 function renderTripRoom(room){
   const link = `${window.location.origin}/room.html?code=${room.code}`;
+  const shareLink = `tryholidai.nl/room.html?code=${room.code}`;
   const uploaded = room.members.filter(m=>m.status==='uploaded').length;
   const total = room.members.length;
   const membersHTML = room.members.map(m=>`
@@ -611,7 +686,7 @@ function renderTripRoom(room){
         <div class="room-badge">${uploaded}/${total} calendars</div>
       </div>
       <div class="room-link-box">
-        <div class="room-link-text">holid.ai/room/${room.code}</div>
+        <div class="room-link-text">${shareLink || link}</div>
         <button class="copy-btn" onclick="copyLink('${link}', this)">Copy link</button>
       </div>
       <div style="font-size:11px;color:var(--ink-muted);margin-bottom:10px">Share this link, each friend uploads only their own calendar</div>
@@ -1200,28 +1275,41 @@ function showSummary(text){
     </div>`);
 }
 
-function showTripRoom(text){
+async function showTripRoom(text){
   step = 11;
-  const dest = currentRoom ? currentRoom.destination : 'Lisbon';
+  const dest = trip.destination || (currentRoom ? currentRoom.destination : 'your destination');
   const nights = trip.duration?.includes('long weekend')?4:trip.duration?.includes('10')?10:7;
-  const room = createTripRoom(dest, `Sep 4–${4+nights}`);
-  setTimeout(()=>{
-    const r = JSON.parse(localStorage.getItem('room_'+room.code));
-    r.members[1].status='uploaded';
-    r.windows=[{dates:'Sep 4 – 11', nights:'7 nights · all free', price:'~€280/pp', bg:'#E3F5F0', col:'#1A8A72'}];
-    localStorage.setItem('room_'+room.code, JSON.stringify(r));
-    currentRoom=r;
-    const cards=document.querySelectorAll('.room-card');
-    if(cards.length>0) cards[cards.length-1].outerHTML=renderTripRoom(r);
-  }, 4000);
+  const dates = `${pickedWindow || 'Sep 4'} (${nights} nights)`;
 
-  addAI(`<p>Trip room created. Share this link, each friend opens it and uploads only their own calendar. Nobody sees anyone else's agenda.</p>
+  // Show loading state
+  addAI(`<p>Creating your trip room...</p>`);
+
+  const room = await createTripRoom(dest, dates);
+
+  // Replace loading message with real room card
+  const lastMsg = convoEl.querySelector('.msg-ai:last-child .ai-text');
+  if(lastMsg){
+    lastMsg.innerHTML = `<p>Trip room created. Share this link — each friend opens it and uploads only their own calendar. Nobody sees anyone else's agenda.</p>
     ${renderTripRoom(room)}
-    <p style="margin-top:10px;font-size:13px;color:var(--ink-muted)">I'm watching prices too, I'll alert you if ${trip.transport?.includes('Car')?'fuel costs change':trip.transport?.includes('Train')?'train prices move':'flights move'}.</p>
+    <p style="margin-top:10px;font-size:13px;color:var(--ink-muted)">I'm watching prices too — I'll alert you if ${trip.transport?.includes('Car')?'fuel costs change':trip.transport?.includes('Train')?'train prices move':'flights move'}.</p>
     <div class="sugs">
       <div class="sug" onclick="openUpload()">Upload my .ics now</div>
       <div class="sug" onclick="submit('Set a price alert')">Set price alert</div>
-    </div>`);
+    </div>`;
+  }
+
+  // Poll for updates every 10 seconds
+  if(room.tripId || room.code){
+    const pollInterval = setInterval(async ()=>{
+      const updated = await refreshTripRoom(room.code);
+      if(!updated) return;
+      currentRoom = updated;
+      const cards = document.querySelectorAll('.room-card');
+      if(cards.length > 0) cards[cards.length-1].outerHTML = renderTripRoom(updated);
+    }, 10000);
+    // Stop polling after 10 minutes
+    setTimeout(()=>clearInterval(pollInterval), 600000);
+  }
 }
 
 function openUpload(){
