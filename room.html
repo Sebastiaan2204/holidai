@@ -175,8 +175,9 @@ function renderTrip(data){
         <div class="how-to">
           <div class="how-title">How to export from Apple Calendar</div>
           <div class="how-step"><div class="how-num">1</div><div class="how-text">Open <strong>Calendar</strong> on your Mac</div></div>
-          <div class="how-step"><div class="how-num">2</div><div class="how-text">In the sidebar, right-click your calendar, then <strong>Export</strong></div></div>
-          <div class="how-step"><div class="how-num">3</div><div class="how-text">Save the <strong>.ics file</strong> and upload it below</div></div>
+          <div class="how-step"><div class="how-num">2</div><div class="how-text">In the top menu, click <strong>File</strong> → <strong>Export</strong> → <strong>Export…</strong></div></div>
+          <div class="how-step"><div class="how-num">3</div><div class="how-text">Choose where to save it, click <strong>Export</strong> — then upload the <strong>.ics file</strong> below</div></div>
+          <div class="how-step"><div class="how-num">4</div><div class="how-text">On iPhone: go to <strong>Calendar app</strong> → tap a date → this exports individual events only, so Mac is recommended</div></div>
         </div>
         <div class="upload-area" id="drop-zone">
           <input type="file" accept=".ics" id="ics-input" onchange="handleFile(this.files[0])"/>
@@ -253,30 +254,77 @@ function handleFile(file){
 
 function parseICS(text){
   const busyPeriods = [];
-  const blocks = text.split('BEGIN:VEVENT');
+
+  // Normalize line endings and unfold folded lines (RFC 5545)
+  const normalized = text
+    .replace(/\r\n/g, '\n')
+    .replace(/\r/g, '\n')
+    .replace(/\n[ \t]/g, ''); // unfold continuation lines
+
+  const blocks = normalized.split('BEGIN:VEVENT');
+
   blocks.slice(1).forEach(block => {
-    const s = block.match(/DTSTART[^:]*:([^\r\n]+)/);
-    const e = block.match(/DTEND[^:]*:([^\r\n]+)/);
-    if(s && e){
-      const start = parseICSDate(s[1]);
-      const end = parseICSDate(e[1]);
-      if(start && end) busyPeriods.push({
-        start: start.toISOString().split('T')[0],
-        end: end.toISOString().split('T')[0]
-      });
+    // Skip cancelled events
+    const statusMatch = block.match(/^STATUS:(.+)$/m);
+    if(statusMatch && statusMatch[1].trim() === 'CANCELLED') return;
+
+    // Skip declined events (from attendee perspective)
+    if(block.includes('PARTSTAT=DECLINED')) return;
+
+    // Match DTSTART — handles VALUE=DATE, TZID=..., plain, with Z
+    const sMatch = block.match(/^DTSTART(?:;[^:]+)?:(.+)$/m);
+    const eMatch = block.match(/^DTEND(?:;[^:]+)?:(.+)$/m);
+    const durMatch = block.match(/^DURATION:(.+)$/m);
+
+    if(!sMatch) return;
+
+    const start = parseICSDate(sMatch[1].trim());
+    if(!start || isNaN(start)) return;
+
+    let end;
+    if(eMatch){
+      end = parseICSDate(eMatch[1].trim());
+    } else if(durMatch){
+      end = new Date(start);
+      const days = durMatch[1].match(/(\d+)D/);
+      const hours = durMatch[1].match(/T(\d+)H/);
+      if(days) end.setDate(end.getDate() + parseInt(days[1]));
+      else if(hours) end.setHours(end.getHours() + parseInt(hours[1]));
+      else end.setDate(end.getDate() + 1);
+    } else {
+      // No DTEND — assume 1 day (common for all-day events)
+      end = new Date(start);
+      end.setDate(end.getDate() + 1);
+    }
+
+    if(!end || isNaN(end)) return;
+
+    const startStr = start.toISOString().split('T')[0];
+    const endStr = end.toISOString().split('T')[0];
+
+    // Only add events that are in the future and have valid duration
+    const today = new Date();
+    today.setHours(0,0,0,0);
+    if(end >= today && endStr >= startStr){
+      busyPeriods.push({ start: startStr, end: endStr });
     }
   });
 
-  // Find free windows in next 6 months
+  // Find free 7-day windows in next 6 months
   const freeWindows = [];
   const today = new Date();
-  let d = new Date(today); d.setDate(d.getDate() + 7);
-  const sixMonths = new Date(today); sixMonths.setMonth(sixMonths.getMonth() + 6);
+  today.setHours(0,0,0,0);
+  let d = new Date(today);
+  d.setDate(d.getDate() + 7);
+  const sixMonths = new Date(today);
+  sixMonths.setMonth(sixMonths.getMonth() + 6);
 
   while(d < sixMonths && freeWindows.length < 5){
-    const wEnd = new Date(d); wEnd.setDate(wEnd.getDate() + 7);
+    const wEnd = new Date(d);
+    wEnd.setDate(wEnd.getDate() + 7);
     const busy = busyPeriods.some(b => {
-      const bs = new Date(b.start); const be = new Date(b.end);
+      const bs = new Date(b.start);
+      const be = new Date(b.end);
       return bs < wEnd && be > d;
     });
     if(!busy) freeWindows.push({ label: formatRange(d, wEnd) });
@@ -287,9 +335,20 @@ function parseICS(text){
 }
 
 function parseICSDate(str){
-  str = str.trim().replace(/[TZ]/g, '');
-  if(str.length >= 8){
-    return new Date(`${str.substr(0,4)}-${str.substr(4,2)}-${str.substr(6,2)}`);
+  str = str.trim();
+  // Remove Z suffix
+  str = str.replace(/Z$/, '');
+  // If datetime format (contains T), extract just the date+time
+  // Format: 20250901T143000 or 20250901
+  const dateStr = str.replace(/T.*$/, ''); // strip time portion
+  if(dateStr.length >= 8){
+    const y = dateStr.substr(0,4);
+    const m = dateStr.substr(4,2);
+    const d = dateStr.substr(6,2);
+    // Validate
+    if(y && m && d && !isNaN(y) && !isNaN(m) && !isNaN(d)){
+      return new Date(`${y}-${m}-${d}`);
+    }
   }
   return null;
 }
