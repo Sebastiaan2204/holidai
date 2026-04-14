@@ -1,5 +1,10 @@
 {
+  "functions": {
+    "api/chat.js": { "runtime": "edge" },
+    "api/trip.js": { "runtime": "edge" }
+  },
   "rewrites": [
-    { "source": "/api/chat", "destination": "/api/chat" }
+    { "source": "/api/chat", "destination": "/api/chat.js" },
+    { "source": "/api/trip", "destination": "/api/trip.js" }
   ]
 }
