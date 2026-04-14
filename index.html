@@ -21,7 +21,7 @@ body{background:var(--sand);font-family:var(--font-b);color:var(--ink);display:f
 
 header{display:flex;align-items:center;justify-content:space-between;padding:18px 32px;border-bottom:1px solid transparent;background:var(--sand);flex-shrink:0;z-index:50;transition:border-color .2s}
 header.scrolled{border-color:var(--sand-dark)}
-.logo{font-family:var(--font-d);font-size:20px;font-weight:400;font-style:italic}
+.logo{font-family:var(--font-d);font-size:20px;font-weight:400;font-style:italic;cursor:pointer}
 .logo b{color:var(--accent);font-weight:400}
 .header-nav{display:flex;align-items:center;gap:24px}
 .header-nav a{font-size:13px;color:var(--ink-muted);text-decoration:none;transition:color .15s}
@@ -321,7 +321,7 @@ header.scrolled{border-color:var(--sand-dark)}
 <body>
 
 <header id="hdr">
-  <div class="logo">holid<b>.</b>ai</div>
+  <a href="/" style="text-decoration:none;color:inherit"><div class="logo">holid<b>.</b>ai</div></a>
   <nav class="header-nav">
     <a href="#">How it works</a>
     <a href="#">Pricing</a>
