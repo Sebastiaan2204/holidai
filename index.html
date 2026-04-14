@@ -164,14 +164,14 @@ header.scrolled{border-color:var(--sand-dark)}
 .p-note{background:var(--sand);border-radius:10px;padding:14px 16px;font-size:12px;color:var(--ink-muted);line-height:1.7;margin-top:6px}
 
 /* PEOPLE PICKER */
-.people-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:8px;margin-top:14px}
+.people-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:14px}
 .people-card{background:var(--white);border:1.5px solid var(--sand-dark);border-radius:14px;padding:14px 8px 12px;cursor:pointer;text-align:center;transition:all .15s;display:flex;flex-direction:column;align-items:center;gap:6px}
 .people-card:hover{border-color:var(--accent);background:var(--accent-dim);transform:translateY(-2px)}
 .pc-icons{display:flex;align-items:center;justify-content:center;height:28px}
 .pc-av{width:22px;height:22px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:8px;font-weight:500;flex-shrink:0;border:1.5px solid var(--sand)}
 .pc-num{font-family:var(--font-d);font-size:20px;font-weight:300;line-height:1;color:var(--ink)}
 .pc-label{font-size:10px;color:var(--ink-muted);line-height:1.3}
-@media(max-width:480px){.people-grid{grid-template-columns:repeat(3,1fr)}}
+@media(max-width:400px){.people-grid{grid-template-columns:repeat(2,1fr)}}
 
 
 /* BUDGET VIBE PICKER */
@@ -1365,13 +1365,12 @@ function startConversation(){
     heroEl.classList.remove('active');
     addAI(`<p>Hey! Let\'s get that trip planned. How many people are going?</p>
       <div class="people-grid">
-        <div class="people-card" onclick="pickPeople(1)"><div class="pc-icons">${personIcons(1)}</div><div class="pc-num">1</div><div class="pc-label">Solo trip</div></div>
-        <div class="people-card" onclick="pickPeople(2)"><div class="pc-icons">${personIcons(2)}</div><div class="pc-num">2</div><div class="pc-label">Just you two</div></div>
-        <div class="people-card" onclick="pickPeople(3)"><div class="pc-icons">${personIcons(3)}</div><div class="pc-num">3</div><div class="pc-label">Small group</div></div>
-        <div class="people-card" onclick="pickPeople(4)"><div class="pc-icons">${personIcons(4)}</div><div class="pc-num">4</div><div class="pc-label">Classic squad</div></div>
-        <div class="people-card" onclick="pickPeople(5)"><div class="pc-icons">${personIcons(5)}</div><div class="pc-num">5</div><div class="pc-label">The gang</div></div>
-        <div class="people-card" onclick="pickPeople(6)"><div class="pc-icons">${personIcons(6)}</div><div class="pc-num">6+</div><div class="pc-label">Big group</div></div>
-        <div class="people-card" onclick="showPeopleInput()"><div class="pc-icons" style="font-size:18px">✏️</div><div class="pc-num" style="font-size:14px">Other</div><div class="pc-label">Our whole crew</div></div>
+        <div class="people-card" onclick="pickPeople(1)"><div class="pc-icons">${personIcons(1)}</div><div class="pc-num">1</div><div class="pc-label">Just me</div></div>
+        <div class="people-card" onclick="pickPeople(2)"><div class="pc-icons">${personIcons(2)}</div><div class="pc-num">2</div><div class="pc-label">Two of us</div></div>
+        <div class="people-card" onclick="pickPeople(3)"><div class="pc-icons">${personIcons(3)}</div><div class="pc-num">3</div><div class="pc-label">Three of us</div></div>
+        <div class="people-card" onclick="pickPeople(4)"><div class="pc-icons">${personIcons(4)}</div><div class="pc-num">4</div><div class="pc-label">Four of us</div></div>
+        <div class="people-card" onclick="pickPeople(5)"><div class="pc-icons">${personIcons(5)}</div><div class="pc-num">5</div><div class="pc-label">Five of us</div></div>
+        <div class="people-card" onclick="showPeopleInput()"><div class="pc-icons">${personIcons(6)}</div><div class="pc-num">6+</div><div class="pc-label">More of us</div></div>
       </div>`);
   }, 0);
 }
@@ -1405,39 +1404,25 @@ function pickMode(mode){
       // Just need calendar sync + window finding
       addAI(`<p>Let's find when everyone's free. How many people are in your group?</p>
         <div class="people-grid">
-          <div class="people-card" onclick="pickPeopleWindow(2)"><div class="pc-icons">${personIcons(2)}</div><div class="pc-num">2</div><div class="pc-label">Just you two</div></div>
-          <div class="people-card" onclick="pickPeopleWindow(3)"><div class="pc-icons">${personIcons(3)}</div><div class="pc-num">3</div><div class="pc-label">Small group</div></div>
-          <div class="people-card" onclick="pickPeopleWindow(4)"><div class="pc-icons">${personIcons(4)}</div><div class="pc-num">4</div><div class="pc-label">Classic squad</div></div>
-          <div class="people-card" onclick="pickPeopleWindow(5)"><div class="pc-icons">${personIcons(5)}</div><div class="pc-num">5</div><div class="pc-label">The gang</div></div>
-          <div class="people-card" onclick="pickPeopleWindow(6)"><div class="pc-icons">${personIcons(6)}</div><div class="pc-num">6+</div><div class="pc-label">Big group</div></div>
-          <div class="people-card" onclick="showPeopleInput()"><div class="pc-icons" style="font-size:18px">✏️</div><div class="pc-num" style="font-size:14px">Other</div><div class="pc-label">Our whole crew</div></div>
+          <div class="people-card" onclick="pickPeopleWindow(1)"><div class="pc-icons">${personIcons(1)}</div><div class="pc-num">1</div><div class="pc-label">Just me</div></div>
+          <div class="people-card" onclick="pickPeopleWindow(2)"><div class="pc-icons">${personIcons(2)}</div><div class="pc-num">2</div><div class="pc-label">Two of us</div></div>
+          <div class="people-card" onclick="pickPeopleWindow(3)"><div class="pc-icons">${personIcons(3)}</div><div class="pc-num">3</div><div class="pc-label">Three of us</div></div>
+          <div class="people-card" onclick="pickPeopleWindow(4)"><div class="pc-icons">${personIcons(4)}</div><div class="pc-num">4</div><div class="pc-label">Four of us</div></div>
+          <div class="people-card" onclick="pickPeopleWindow(5)"><div class="pc-icons">${personIcons(5)}</div><div class="pc-num">5</div><div class="pc-label">Five of us</div></div>
+          <div class="people-card" onclick="showPeopleInput()"><div class="pc-icons">${personIcons(6)}</div><div class="pc-num">6+</div><div class="pc-label">More of us</div></div>
         </div>`);
     } else {
       // Full flow or dates+flights+acc, ask people first
       addAI(`<p>${mode === 'dates-flights-acc' ? 'Perfect, let\'s find the best dates and prices.' : 'Let\'s plan the whole thing.'} First, how many people are going?</p>
         <div class="people-grid">
-          <div class="people-card" onclick="pickPeople(2)"><div class="pc-icons">${personIcons(2)}</div><div class="pc-num">2</div><div class="pc-label">Just you two</div></div>
-          <div class="people-card" onclick="pickPeople(3)"><div class="pc-icons">${personIcons(3)}</div><div class="pc-num">3</div><div class="pc-label">Small group</div></div>
-          <div class="people-card" onclick="pickPeople(4)"><div class="pc-icons">${personIcons(4)}</div><div class="pc-num">4</div><div class="pc-label">Classic squad</div></div>
-          <div class="people-card" onclick="pickPeople(5)"><div class="pc-icons">${personIcons(5)}</div><div class="pc-num">5</div><div class="pc-label">The gang</div></div>
-          <div class="people-card" onclick="pickPeople(6)"><div class="pc-icons">${personIcons(6)}</div><div class="pc-num">6+</div><div class="pc-label">Big group</div></div>
+          <div class="people-card" onclick="pickPeople(1)"><div class="pc-icons">${personIcons(1)}</div><div class="pc-num">1</div><div class="pc-label">Just me</div></div>
+          <div class="people-card" onclick="pickPeople(2)"><div class="pc-icons">${personIcons(2)}</div><div class="pc-num">2</div><div class="pc-label">Two of us</div></div>
+          <div class="people-card" onclick="pickPeople(3)"><div class="pc-icons">${personIcons(3)}</div><div class="pc-num">3</div><div class="pc-label">Three of us</div></div>
+          <div class="people-card" onclick="pickPeople(4)"><div class="pc-icons">${personIcons(4)}</div><div class="pc-num">4</div><div class="pc-label">Four of us</div></div>
+          <div class="people-card" onclick="pickPeople(5)"><div class="pc-icons">${personIcons(5)}</div><div class="pc-num">5</div><div class="pc-label">Five of us</div></div>
+          <div class="people-card" onclick="showPeopleInput()"><div class="pc-icons">${personIcons(6)}</div><div class="pc-num">6+</div><div class="pc-label">More of us</div></div>
         </div>`);
     }
-  }, 800);
-}
-
-// Quick path for window-only mode
-function pickPeopleWindow(n){
-  trip.people = n;
-  addUser(n === 1 ? 'Solo trip' : n === 6 ? '6 or more' : n + ' people');
-  showTyping();
-  setTimeout(()=>{
-    removeTyping();
-    addAI(`<p>Got it. <a href="#" onclick="openCalModal();return false" style="color:var(--accent);text-decoration:none;font-weight:500">Connect your calendars</a> so I can find when everyone's free, or I'll use example data.</p>
-      <div class="sugs">
-        <div class="sug" onclick="openCalModal()">Connect calendars 📅</div>
-        <div class="sug" onclick="runWindowOnly()">Use example data</div>
-      </div>`);
   }, 700);
 }
 
