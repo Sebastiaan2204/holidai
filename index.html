@@ -316,6 +316,21 @@ header.scrolled{border-color:var(--sand-dark)}
 .plan-divider{display:flex;align-items:center;gap:12px;padding:20px 0 4px}
 .plan-divider-line{flex:1;height:1px;background:var(--sand-dark)}
 .plan-divider-label{font-size:11px;text-transform:uppercase;letter-spacing:.1em;color:var(--ink-faint);font-weight:500;white-space:nowrap}
+
+/* DATE PICKER */
+.dp-month { margin-bottom: 20px; }
+.dp-month-title { font-size: 13px; font-weight: 500; color: var(--ink); margin-bottom: 8px; text-transform: capitalize; }
+.dp-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 5px; }
+.dp-dow { font-size: 10px; font-weight: 500; color: var(--ink-faint); text-align: center; padding-bottom: 6px; text-transform: uppercase; letter-spacing: .05em; }
+.dp-day { aspect-ratio:1; border-radius:10px; display:flex; align-items:center; justify-content:center; font-size:14px; font-weight:400; cursor:pointer; transition:all .1s; color:var(--ink); background:var(--white); border:1.5px solid var(--sand-dark); user-select:none; -webkit-tap-highlight-color:transparent; }
+.dp-day:hover { border-color:#22C55E; background:#F0FDF4; }
+.dp-day.selected { background:#22C55E; color:white; border-color:#22C55E; font-weight:500; }
+.dp-day.today { border-color:var(--accent); }
+.dp-day.past { color:var(--ink-faint); cursor:default; background:var(--sand); border-color:transparent; font-size:12px; }
+.dp-day.past:hover { border-color:transparent; background:var(--sand); }
+.dp-day.empty { background:transparent; cursor:default; border-color:transparent; }
+.dp-day.empty:hover { border-color:transparent; background:transparent; }
+.dp-count { font-size:12px; color:#16A34A; font-weight:500; margin-top:8px; text-align:center; min-height:18px; }
 </style>
 </head>
 <body>
@@ -349,7 +364,7 @@ header.scrolled{border-color:var(--sand-dark)}
           <div class="csc-dot" id="csc-dot"></div>
           <div class="csc-collapsed-text">
             <span class="csc-title">Group calendars</span>
-            <span class="csc-collapsed-sub" id="csc-collapsed-sub">, tap to connect</span>
+            <span class="csc-collapsed-sub" id="csc-collapsed-sub">, tap to fill in availability</span>
           </div>
         </div>
         <div class="csc-collapsed-right">
@@ -369,10 +384,10 @@ header.scrolled{border-color:var(--sand-dark)}
           </div>
         </div>
         <div class="csc-actions">
-          <button class="csc-connect-btn" id="csc-connect-btn" onclick="openCalModal()">Connect your calendar</button>
+          <button class="csc-connect-btn" id="csc-connect-btn" onclick="openCalModal()">Fill in my availability</button>
           <button class="csc-share-btn" id="csc-share-btn" onclick="shareCalLink()">Invite friends</button>
         </div>
-        <div class="csc-privacy">We only see busy/free, never your event titles. <a href="#" onclick="openPriv();return false">Learn more →</a></div>
+        <div class="csc-privacy">No calendar access needed. Just tap the days you are free.</div>
       </div>
 
     </div>
@@ -394,24 +409,15 @@ header.scrolled{border-color:var(--sand-dark)}
 
 </div>
 
-<!-- CAL MODAL -->
+<!-- AVAILABILITY MODAL -->
 <div class="modal-bg" id="cal-modal" onclick="closeCalModal(event)">
-  <div class="modal">
-    <div class="modal-title">Connect calendars</div>
-    <div class="modal-sub">We only read busy/free blocks, your event titles are never visible to us or your friends.</div>
-    <div class="cal-opt" id="co-google" onclick="connectCal('google')">
-      <div class="cal-opt-icon" style="background:#FEF3F0"><svg width="18" height="18" viewBox="0 0 20 20"><rect x="3" y="3" width="14" height="14" rx="2" fill="#EA4335"/><path d="M7 10h6M10 7v6" stroke="white" stroke-width="1.5" stroke-linecap="round"/></svg></div>
-      <div><div class="cal-opt-name">Google Calendar</div><div class="cal-opt-sub" id="cs-google">Connect with Google</div></div>
-    </div>
-    <div class="cal-opt" id="co-apple" onclick="connectCal('apple')">
-      <div class="cal-opt-icon" style="background:#F0F4FF"><svg width="18" height="18" viewBox="0 0 20 20"><rect x="3" y="3" width="14" height="14" rx="2" fill="#3478F6"/><circle cx="10" cy="10" r="3" fill="white"/></svg></div>
-      <div><div class="cal-opt-name">Apple Calendar</div><div class="cal-opt-sub" id="cs-apple">Connect with Apple ID</div></div>
-    </div>
-    <div class="cal-opt" id="co-outlook" onclick="connectCal('outlook')">
-      <div class="cal-opt-icon" style="background:#F0F8FF"><svg width="18" height="18" viewBox="0 0 20 20"><rect x="3" y="3" width="14" height="14" rx="2" fill="#0078D4"/><path d="M7 10h6M10 7v6" stroke="white" stroke-width="1.2" stroke-linecap="round"/></svg></div>
-      <div><div class="cal-opt-name">Outlook</div><div class="cal-opt-sub" id="cs-outlook">Connect with Microsoft</div></div>
-    </div>
-    <button class="modal-close" onclick="closeCalModal()">Done</button>
+  <div class="modal" style="max-width:420px;max-height:85vh;overflow-y:auto">
+    <div class="modal-title">When are you free?</div>
+    <div class="modal-sub">Tap the days you could go on holiday. No calendar access needed.</div>
+    <div id="modal-date-picker"></div>
+    <div class="dp-count" id="modal-dp-count" style="margin-bottom:12px"></div>
+    <button class="modal-close" id="modal-save-btn" onclick="saveModalAvailability()" style="background:var(--accent)">Save my availability</button>
+    <button class="modal-close" onclick="closeCalModal()" style="background:var(--sand);color:var(--ink);margin-top:8px">Close</button>
   </div>
 </div>
 
@@ -491,25 +497,79 @@ function esc(t){ return t.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/
 function aiSvg(){ return `<svg viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="2.5" fill="white"/><circle cx="8" cy="2.5" r="1.1" fill="white" opacity=".4"/><circle cx="8" cy="13.5" r="1.1" fill="white" opacity=".4"/><circle cx="2.5" cy="8" r="1.1" fill="white" opacity=".4"/><circle cx="13.5" cy="8" r="1.1" fill="white" opacity=".4"/></svg>`; }
 
 // ── MODALS ──
-function openCalModal(){ document.getElementById('cal-modal').classList.add('open'); }
-function closeCalModal(e){ if(!e||e.target===document.getElementById('cal-modal')) document.getElementById('cal-modal').classList.remove('open'); }
-function connectCal(type){
-  document.getElementById('co-'+type).classList.add('done');
-  document.getElementById('cs-'+type).textContent='Connected ✓';
-  if(!calConnected){
-    calConnected=true;
-    // Update the status card
-    const youStatus = document.getElementById('csc-you-status');
-    if(youStatus){ youStatus.textContent='Connected ✓'; youStatus.className='csc-status csc-connected'; }
-    const connectBtn = document.getElementById('csc-connect-btn');
-    if(connectBtn){ connectBtn.textContent='Calendar connected ✓'; connectBtn.classList.add('connected'); }
-    const dot = document.getElementById('csc-dot');
-    if(dot) dot.classList.add('active');
-    const sub = document.getElementById('csc-collapsed-sub');
-    if(sub) sub.textContent = ', your calendar connected';
-    updateCalBadge();
+const modalSelectedDays = new Set();
+
+function openCalModal(){
+  document.getElementById('cal-modal').classList.add('open');
+  buildModalDatePicker();
+}
+function closeCalModal(e){
+  if(!e||e.target===document.getElementById('cal-modal')) document.getElementById('cal-modal').classList.remove('open');
+}
+
+function buildModalDatePicker(){
+  const container = document.getElementById('modal-date-picker');
+  if(!container || container.dataset.built) return;
+  container.dataset.built = 'true';
+
+  const today = new Date();
+  today.setHours(0,0,0,0);
+
+  for(let m = 0; m < 6; m++){
+    const date = new Date(today.getFullYear(), today.getMonth() + m, 1);
+    const monthEl = document.createElement('div');
+    monthEl.className = 'dp-month';
+    const monthName = date.toLocaleDateString('nl-NL', { month: 'long', year: 'numeric' });
+    monthEl.innerHTML = `<div class="dp-month-title">${monthName}</div><div class="dp-grid"></div>`;
+    container.appendChild(monthEl);
+
+    const grid = monthEl.querySelector('.dp-grid');
+    ['ma','di','wo','do','vr','za','zo'].forEach(d => {
+      const h = document.createElement('div'); h.className='dp-dow'; h.textContent=d; grid.appendChild(h);
+    });
+
+    const firstDay = date.getDay();
+    const offset = firstDay === 0 ? 6 : firstDay - 1;
+    for(let i = 0; i < offset; i++){
+      const e = document.createElement('div'); e.className='dp-day empty'; grid.appendChild(e);
+    }
+
+    const daysInMonth = new Date(date.getFullYear(), date.getMonth()+1, 0).getDate();
+    for(let day = 1; day <= daysInMonth; day++){
+      const d = new Date(date.getFullYear(), date.getMonth(), day);
+      const dateStr = d.toISOString().split('T')[0];
+      const isPast = d < today;
+      const cell = document.createElement('div');
+      cell.className = 'dp-day' + (isPast?' past':'');
+      if(modalSelectedDays.has(dateStr)) cell.classList.add('selected');
+      cell.textContent = day;
+      if(!isPast) cell.addEventListener('click', ()=>{
+        if(modalSelectedDays.has(dateStr)){ modalSelectedDays.delete(dateStr); cell.classList.remove('selected'); }
+        else { modalSelectedDays.add(dateStr); cell.classList.add('selected'); }
+        const c = document.getElementById('modal-dp-count');
+        if(c) c.textContent = modalSelectedDays.size > 0 ? `${modalSelectedDays.size} days selected` : '';
+      });
+      grid.appendChild(cell);
+    }
   }
 }
+
+function saveModalAvailability(){
+  if(modalSelectedDays.size === 0) return;
+  calConnected = true;
+  const youStatus = document.getElementById('csc-you-status');
+  if(youStatus){ youStatus.textContent='Availability filled in ✓'; youStatus.className='csc-status csc-connected'; }
+  const connectBtn = document.getElementById('csc-connect-btn');
+  if(connectBtn){ connectBtn.textContent='Availability saved ✓'; connectBtn.classList.add('connected'); }
+  const dot = document.getElementById('csc-dot');
+  if(dot) dot.classList.add('active');
+  const sub = document.getElementById('csc-collapsed-sub');
+  if(sub) sub.textContent = `, ${modalSelectedDays.size} days marked free`;
+  updateCalBadge();
+  closeCalModal();
+}
+
+function connectCal(type){ saveModalAvailability(); }
 
 function updateCalBadge(){
   const members = document.querySelectorAll('#csc-members .csc-member');
