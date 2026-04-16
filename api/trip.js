@@ -161,6 +161,39 @@ export default async function handler(req) {
       });
     }
 
+    // ── SAVE AVAILABILITY ───────────────────────
+    if (method === 'POST' && action === 'availability') {
+      const { memberId, tripId, availableDays } = await req.json();
+
+      // Delete old availability for this member
+      await supabase(`busy_periods?member_id=eq.${memberId}`, 'DELETE');
+
+      // Store available days as free periods
+      if (availableDays && availableDays.length > 0) {
+        await supabase('busy_periods', 'POST',
+          availableDays.map(day => ({
+            member_id: memberId,
+            trip_id: tripId,
+            date_start: day,
+            date_end: day
+          }))
+        );
+      }
+
+      // Mark member as connected
+      await supabase(`members?id=eq.${memberId}`, 'PATCH', {
+        calendar_connected: true
+      });
+
+      // Find overlapping free weeks
+      const windows = await computeFreeWeeks(tripId);
+
+      return new Response(JSON.stringify({ success: true, windows }), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' }
+      });
+    }
+
     // ── VOTE ─────────────────────────────────────
     if (method === 'POST' && action === 'vote') {
       const { memberId, vote } = await req.json();
@@ -179,6 +212,71 @@ export default async function handler(req) {
       headers: { 'Content-Type': 'application/json' }
     });
   }
+}
+
+async function computeFreeWeeks(tripId) {
+  // Get all members who have submitted availability
+  const members = await supabase(`members?trip_id=eq.${tripId}&calendar_connected=eq.true&select=id`);
+  if (!members || members.length < 1) return [];
+
+  // Get all available days per member
+  const available = await supabase(`busy_periods?trip_id=eq.${tripId}&select=member_id,date_start`);
+  if (!available || available.length === 0) return [];
+
+  // Group by member
+  const byMember = {};
+  members.forEach(m => byMember[m.id] = new Set());
+  available.forEach(a => {
+    if (byMember[a.member_id]) byMember[a.member_id].add(a.date_start);
+  });
+
+  const memberIds = Object.keys(byMember);
+  if (memberIds.length === 0) return [];
+
+  // Find weeks where ALL members have all 7 days marked as free
+  const windows = [];
+  const today = new Date();
+  const sixMonths = new Date(today);
+  sixMonths.setMonth(sixMonths.getMonth() + 6);
+
+  let d = new Date(today);
+  d.setDate(d.getDate() + 7);
+
+  while (d < sixMonths && windows.length < 5) {
+    const weekDays = [];
+    for (let i = 0; i < 7; i++) {
+      const day = new Date(d);
+      day.setDate(day.getDate() + i);
+      weekDays.push(day.toISOString().split('T')[0]);
+    }
+
+    // Check if ALL members are free ALL 7 days
+    const allFree = memberIds.every(memberId =>
+      weekDays.every(day => byMember[memberId].has(day))
+    );
+
+    if (allFree) {
+      const weekEnd = new Date(d);
+      weekEnd.setDate(weekEnd.getDate() + 6);
+      const label = `${d.toLocaleDateString('en-GB', { month: 'short', day: 'numeric' })} – ${weekEnd.toLocaleDateString('en-GB', { month: 'short', day: 'numeric' })}`;
+
+      // Save window
+      await supabase('free_windows', 'POST', {
+        trip_id: tripId,
+        date_start: weekDays[0],
+        date_end: weekDays[6],
+        nights: 7,
+        label,
+        price_estimate: '~€200-400/pp',
+        price_level: 'mid'
+      });
+
+      windows.push({ label, nights: 7 });
+    }
+    d.setDate(d.getDate() + 7);
+  }
+
+  return windows;
 }
 
 async function computeFreeWindows(tripId) {
