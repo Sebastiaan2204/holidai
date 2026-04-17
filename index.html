@@ -173,6 +173,15 @@ header{display:flex;align-items:center;justify-content:space-between;padding:16p
   .assistant-panel{width:calc(100vw - 32px);right:16px}
   .header-link{display:none}
 }
+
+/* FEATURE GRID */
+.feature-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-top:32px;text-align:left}
+.feature-card{background:var(--white);border:1.5px solid var(--sand-dark);border-radius:14px;padding:18px 16px}
+.feature-icon{font-size:22px;margin-bottom:10px}
+.feature-title{font-size:13px;font-weight:500;color:var(--ink);margin-bottom:6px;line-height:1.4}
+.feature-body{font-size:12px;color:var(--ink-muted);line-height:1.6}
+.hero.compact .feature-grid{display:none}
+@media(max-width:600px){.feature-grid{grid-template-columns:1fr}}
 </style>
 </head>
 <body>
@@ -180,7 +189,7 @@ header{display:flex;align-items:center;justify-content:space-between;padding:16p
   <a href="/" class="logo">holid<b>.</b>ai</a>
   <div class="header-tabs">
     <button class="tab active" id="tab-planner" onclick="switchTab('planner')">Trip planner</button>
-    <button class="tab" id="tab-datepicker" onclick="switchTab('datepicker')">Datumprikker</button>
+    <button class="tab" id="tab-datepicker" onclick="switchTab('datepicker')">Date picker</button>
   </div>
   <div class="header-right">
     <a href="#" class="header-link" onclick="openPriv();return false">Privacy</a>
@@ -193,12 +202,29 @@ header{display:flex;align-items:center;justify-content:space-between;padding:16p
   <div class="view" id="view-planner">
     <div class="hero" id="hero">
       <div class="hero-eyebrow">AI-powered group travel</div>
-      <h1 class="hero-headline">Finally getting that trip<br><em>out of the groupchat.</em></h1>
+      <h1 class="hero-headline">Find the smartest way<br><em>to get there together.</em></h1>
       <p class="hero-sub">Tell holid.ai where you want to go. We find the cheapest flights, spot unconventional routes, and handle the whole group.</p>
       <button class="hero-cta" onclick="startChat()">
         <svg width="16" height="16" viewBox="0 0 22 22" fill="none"><path d="M11 2C6.03 2 2 5.69 2 10.2c0 2.4 1.1 4.56 2.87 6.07L4 20l4.13-1.53C9.3 18.8 10.13 19 11 19c4.97 0 9-3.69 9-8.2C20 6.29 15.97 2 11 2z" fill="white"/></svg>
         Start planning
       </button>
+      <div class="feature-grid">
+        <div class="feature-card">
+          <div class="feature-icon">✈️</div>
+          <div class="feature-title">Radius-based flight search</div>
+          <div class="feature-body">Tell us how far you are willing to drive to the airport. holid.ai finds flights from Schiphol, Eindhoven, Brussels — wherever is cheapest for your dates.</div>
+        </div>
+        <div class="feature-card">
+          <div class="feature-icon">💡</div>
+          <div class="feature-title">Unconventional routes</div>
+          <div class="feature-body">Flying from London Gatwick instead of Amsterdam can save a group of 8 over €1,000. holid.ai spots these opportunities automatically.</div>
+        </div>
+        <div class="feature-card">
+          <div class="feature-icon">📅</div>
+          <div class="feature-title">Date picker for the whole group</div>
+          <div class="feature-body">Share a link. Everyone taps the days they are free. holid.ai calculates which weeks work for everyone — no WhatsApp chaos needed.</div>
+        </div>
+      </div>
     </div>
     <div class="convo-wrap" id="convo-wrap">
       <div class="convo-inner"><div class="convo" id="convo"></div></div>
@@ -297,13 +323,7 @@ function startChat(){
   heroEl.classList.add('compact');
   inputZoneEl.style.display = 'block';
   inputEl.focus();
-  addAI(`<p>Where do you want to go, and where are you flying from?</p>
-    <div class="sugs">
-      <div class="sug" onclick="quickStart('Amsterdam to Seville, 8 people, September')">Amsterdam to Seville</div>
-      <div class="sug" onclick="quickStart('Amsterdam to Lisbon, 4 people, October')">Amsterdam to Lisbon</div>
-      <div class="sug" onclick="quickStart('Amsterdam to Barcelona, 6 people, August')">Amsterdam to Barcelona</div>
-      <div class="sug" onclick="quickStart('Amsterdam to Malaga, 10 people, July')">Amsterdam to Malaga</div>
-    </div>`);
+  addAI(`<p>Where do you want to go, and where are you flying from?</p>`);
 }
 
 function quickStart(text){
@@ -570,14 +590,14 @@ function buildDpCalendar(){
   const code=Math.random().toString(36).substr(2,6).toUpperCase();
   document.getElementById('dp-share-link').textContent=`${window.location.origin}/room.html?dp=${code}`;
   const today=new Date(); today.setHours(0,0,0,0);
-  for(let m=0;m<6;m++){
+  for(let m=0;m<12;m++){
     const date=new Date(today.getFullYear(),today.getMonth()+m,1);
     const monthEl=document.createElement('div'); monthEl.className='dp-month';
-    const mn=date.toLocaleDateString('nl-NL',{month:'long',year:'numeric'});
+    const mn=date.toLocaleDateString('en-GB',{month:'long',year:'numeric'});
     monthEl.innerHTML=`<div class="dp-month-title">${mn}</div><div class="dp-grid"></div>`;
     cal.appendChild(monthEl);
     const grid=monthEl.querySelector('.dp-grid');
-    ['ma','di','wo','do','vr','za','zo'].forEach(d=>{ const h=document.createElement('div'); h.className='dp-dow'; h.textContent=d; grid.appendChild(h); });
+    ['Mo','Tu','We','Th','Fr','Sa','Su'].forEach(d=>{ const h=document.createElement('div'); h.className='dp-dow'; h.textContent=d; grid.appendChild(h); });
     const fd=date.getDay(); const off=fd===0?6:fd-1;
     for(let i=0;i<off;i++){ const e=document.createElement('div'); e.className='dp-day empty'; grid.appendChild(e); }
     const dim=new Date(date.getFullYear(),date.getMonth()+1,0).getDate();
