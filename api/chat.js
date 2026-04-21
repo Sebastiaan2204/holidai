@@ -1,7 +1,3 @@
-import Anthropic from '@anthropic-ai/sdk';
-
-const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
-
 const SYSTEM = `You are a friendly group travel assistant for holid.ai. You help groups plan trips departing from Amsterdam, Eindhoven, Brussels or London Gatwick.
 
 Collect these four things through natural conversation:
@@ -24,19 +20,29 @@ Never include the SEARCH line unless all four values are confirmed.`;
 export default async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).end();
 
-  const { messages = [], tripContext = {} } = req.body;
+  const { messages = [] } = req.body;
 
   try {
-    const response = await client.messages.create({
-      model: 'claude-sonnet-4-6',
-      max_tokens: 512,
-      system: SYSTEM,
-      messages: messages.map(m => ({ role: m.role, content: m.content })),
+    const response = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'x-api-key': process.env.ANTHROPIC_API_KEY,
+        'anthropic-version': '2023-06-01',
+        'content-type': 'application/json',
+      },
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-6',
+        max_tokens: 512,
+        system: SYSTEM,
+        messages: messages.map(m => ({ role: m.role, content: m.content })),
+      }),
     });
 
-    const text = response.content[0].text;
-    const searchMatch = text.match(/SEARCH:(\{[^\n]+\})/);
+    const data = await response.json();
+    const text = data.content?.[0]?.text;
+    if (!text) return res.status(500).json({ error: 'No response from AI' });
 
+    const searchMatch = text.match(/SEARCH:(\{[^\n]+\})/);
     if (searchMatch) {
       const searchParams = JSON.parse(searchMatch[1]);
       const reply = text.replace(/SEARCH:[^\n]+/, '').trim();
