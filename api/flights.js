@@ -1,5 +1,3 @@
-const TOKEN = process.env.DUFFEL_TOKEN;
-
 const ORIGINS = {
   AMS: { iata: 'AMS', name: 'Amsterdam Schiphol' },
   EIN: { iata: 'EIN', name: 'Eindhoven' },
@@ -7,16 +5,18 @@ const ORIGINS = {
   LGW: { iata: 'LGW', name: 'London Gatwick' },
 };
 
-const HEADERS = {
-  'Authorization': `Bearer ${TOKEN}`,
-  'Duffel-Version': 'v2',
-  'Content-Type': 'application/json',
-  'Accept': 'application/json',
-};
+function headers() {
+  return {
+    'Authorization': `Bearer ${process.env.DUFFEL_TOKEN}`,
+    'Duffel-Version': 'v2',
+    'Content-Type': 'application/json',
+    'Accept': 'application/json',
+  };
+}
 
 async function lookupIATA(query) {
   const url = `https://api.duffel.com/places/suggestions?query=${encodeURIComponent(query)}`;
-  const r = await fetch(url, { headers: HEADERS });
+  const r = await fetch(url, { headers: headers() });
   const json = await r.json();
   console.log('Place lookup:', r.status, JSON.stringify(json).slice(0, 300));
   const hit = json?.data?.find(p => p.type === 'airport') || json?.data?.[0];
@@ -30,7 +30,7 @@ export default async function handler(req, res) {
   const { origin = 'AMS', destQuery, departDate, returnDate, passengers = 1, cabin = 'economy' } = req.body;
   console.log('Flight search:', { origin, destQuery, departDate, returnDate, passengers, cabin });
 
-  if (!TOKEN) return res.status(500).json({ error: 'DUFFEL_TOKEN not configured' });
+  if (!process.env.DUFFEL_TOKEN) return res.status(500).json({ error: 'DUFFEL_TOKEN not configured' });
 
   try {
     const dest = await lookupIATA(destQuery);
@@ -52,7 +52,7 @@ export default async function handler(req, res) {
 
     const r = await fetch('https://api.duffel.com/air/offer_requests?return_offers=true', {
       method: 'POST',
-      headers: HEADERS,
+      headers: headers(),
       body: JSON.stringify(body),
     });
 
