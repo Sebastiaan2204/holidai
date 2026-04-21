@@ -44,6 +44,14 @@ function nearbyAirports(lat, lng, maxKm = 250, maxCount = 5) {
     .slice(0, maxCount);
 }
 
+async function geocodeCity(city) {
+  const url = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(city)}&format=json&limit=1`;
+  const r = await fetch(url, { headers: { 'User-Agent': 'holid.ai/1.0' } });
+  const json = await r.json();
+  if (!json?.[0]) return null;
+  return { lat: parseFloat(json[0].lat), lng: parseFloat(json[0].lon) };
+}
+
 function headers() {
   return {
     'Authorization': `Bearer ${process.env.DUFFEL_TOKEN}`,
@@ -126,9 +134,8 @@ export default async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).end();
 
   const {
-    destQuery, departDate, returnDate, passengers = 1, cabin = 'economy',
+    destQuery, originCity, departDate, returnDate, passengers = 1, cabin = 'economy',
     directOnly = false,
-    userLat, userLng,
     originCode,
   } = req.body;
 
@@ -151,10 +158,14 @@ export default async function handler(req, res) {
       const offers = await searchFromOrigin(airport, dest, departDate, effectiveReturn, passengers, cabin, directOnly);
       const flights = offers.slice(0, 5).map(o => formatOffer(o, airport, dest, departDate, passengers, cabin));
       return res.json({ flights, destName: dest.cityName, selectedOrigin: airport });
-    } else if (userLat != null && userLng != null) {
-      origins = nearbyAirports(parseFloat(userLat), parseFloat(userLng));
+    } else if (originCity) {
+      const coords = await geocodeCity(originCity);
+      if (coords) {
+        origins = nearbyAirports(coords.lat, coords.lng);
+      } else {
+        origins = AIRPORTS.filter(a => ['AMS','EIN','RTM','BRU','CRL'].includes(a.iata));
+      }
     } else {
-      // Fallback — default Dutch/Belgian airports
       origins = AIRPORTS.filter(a => ['AMS','EIN','RTM','BRU','CRL'].includes(a.iata));
     }
 
