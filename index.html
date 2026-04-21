@@ -413,30 +413,15 @@ async function callChatAPI(text){
 // ── Real flight search ──
 let _lastSearchParams = null;
 
-async function getUserLocation(){
-  return new Promise(resolve => {
-    if(!navigator.geolocation){ resolve(null); return; }
-    navigator.geolocation.getCurrentPosition(
-      p => resolve({ lat: p.coords.latitude, lng: p.coords.longitude }),
-      () => resolve(null),
-      { timeout: 6000 }
-    );
-  });
-}
-
 async function callFlightsAPI(params){
   trip.destination = params.destQuery;
   _lastSearchParams = params;
-  const loadEl = addAI(`<div class="sr-searching"><div class="sr-spin"></div>Finding airports near you for ${params.passengers} people to ${params.destQuery}…</div>`);
+  const loadEl = addAI(`<div class="sr-searching"><div class="sr-spin"></div>Finding airports near ${params.originCity || 'you'} for ${params.passengers} people to ${params.destQuery}…</div>`);
   try{
-    const location = await getUserLocation();
-    const body = { ...params };
-    if(location){ body.userLat = location.lat; body.userLng = location.lng; }
-
     const res = await fetch('/api/flights',{
       method:'POST',
       headers:{'Content-Type':'application/json'},
-      body: JSON.stringify(body)
+      body: JSON.stringify(params)
     });
     const data = await res.json();
     if(loadEl && loadEl.parentElement) loadEl.parentElement.remove();
