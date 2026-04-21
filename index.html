@@ -102,15 +102,22 @@ header{display:flex;align-items:center;justify-content:space-between;padding:16p
 .sr-leg-label{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--ink-faint);margin-bottom:8px;margin-top:4px}
 .sr-leg-divider{height:1px;background:var(--sand-dark);margin:14px 0}
 .cmp-card{background:var(--white);border:1.5px solid var(--sand-dark);border-radius:16px;overflow:hidden;margin-top:10px}
-.cmp-title{padding:13px 16px;font-size:13px;font-weight:600;border-bottom:1px solid var(--sand-dark);background:var(--sand)}
-.cmp-row{display:flex;align-items:center;justify-content:space-between;padding:12px 16px;border-bottom:1px solid var(--sand-dark);font-size:13px}
+.cmp-title{padding:13px 16px;font-size:12px;font-weight:600;border-bottom:1px solid var(--sand-dark);background:var(--sand);color:var(--ink-muted)}
+.cmp-row{display:flex;align-items:center;justify-content:space-between;padding:13px 16px;border-bottom:1px solid var(--sand-dark);font-size:13px;cursor:pointer;transition:background .12s}
 .cmp-row:last-child{border-bottom:none}
+.cmp-row:hover{background:#f5f8ff}
 .cmp-row.cmp-best{background:#f0f7ff}
-.cmp-row.unavailable{color:var(--ink-faint)}
-.cmp-airport{font-weight:500}
+.cmp-row.unavailable{color:var(--ink-faint);cursor:default}
+.cmp-row.unavailable:hover{background:transparent}
+.cmp-left{display:flex;flex-direction:column;gap:2px}
+.cmp-airport{font-weight:600;font-size:14px}
 .cmp-code{font-size:11px;color:var(--ink-faint);font-weight:400;margin-left:4px}
-.cmp-price{font-family:var(--font-d);font-size:18px;font-weight:300;display:flex;align-items:center;gap:6px}
-.cmp-price small{font-family:var(--font-b);font-size:11px;color:var(--ink-muted);font-weight:400}
+.cmp-dist{font-size:11px;color:var(--ink-faint)}
+.cmp-right{display:flex;align-items:center;gap:8px}
+.cmp-price{font-family:var(--font-d);font-size:22px;font-weight:300}
+.cmp-price small{font-family:var(--font-b);font-size:11px;color:var(--ink-muted);font-weight:400;margin-left:1px}
+.cmp-price-na{font-size:12px;color:var(--ink-faint)}
+.cmp-arrow{font-size:18px;color:var(--ink-faint);margin-left:2px}
 .inline-input::placeholder{color:var(--ink-faint)}
 .inline-send{background:var(--accent);color:var(--white);border:none;border-radius:10px;padding:10px 16px;font-family:var(--font-b);font-size:13px;font-weight:500;cursor:pointer;white-space:nowrap;transition:opacity .15s;flex-shrink:0}
 .inline-send:hover{opacity:.85}
@@ -404,53 +411,107 @@ async function callChatAPI(text){
 }
 
 // ── Real flight search ──
+let _lastSearchParams = null;
+
+async function getUserLocation(){
+  return new Promise(resolve => {
+    if(!navigator.geolocation){ resolve(null); return; }
+    navigator.geolocation.getCurrentPosition(
+      p => resolve({ lat: p.coords.latitude, lng: p.coords.longitude }),
+      () => resolve(null),
+      { timeout: 6000 }
+    );
+  });
+}
+
 async function callFlightsAPI(params){
   trip.destination = params.destQuery;
-  const loadEl = addAI(`<div class="sr-searching"><div class="sr-spin"></div>Searching all airports for ${params.passengers} people to ${params.destQuery}…</div>`);
+  _lastSearchParams = params;
+  const loadEl = addAI(`<div class="sr-searching"><div class="sr-spin"></div>Finding airports near you for ${params.passengers} people to ${params.destQuery}…</div>`);
   try{
+    const location = await getUserLocation();
+    const body = { ...params };
+    if(location){ body.userLat = location.lat; body.userLng = location.lng; }
+
     const res = await fetch('/api/flights',{
       method:'POST',
       headers:{'Content-Type':'application/json'},
-      body: JSON.stringify(params)
+      body: JSON.stringify(body)
     });
     const data = await res.json();
     if(loadEl && loadEl.parentElement) loadEl.parentElement.remove();
     if(data.error){ addAI(`<p>Flight search failed: ${data.error}</p>`); return; }
-    if(!data.flights || data.flights.length === 0){
+    if(!data.comparison || data.comparison.length === 0){
       addAI(`<p>No flights found for that route. Try different dates or a nearby airport.</p>`);
       return;
     }
-    if(data.comparison) renderComparisonCard(data.comparison, data.destName, params);
-    renderFlightCards(data.flights, data.destName, data.bestOrigin, params, data.returnDate);
+    renderComparisonCard(data.comparison, data.destName, params, data.returnDate);
   } catch(e){
     if(loadEl && loadEl.parentElement) loadEl.parentElement.remove();
     addAI(`<p>Flight search failed — please try again.</p>`);
   }
 }
 
+async function loadFlightsFromAirport(originCode){
+  if(!_lastSearchParams) return;
+  const loadEl = addAI(`<div class="sr-searching"><div class="sr-spin"></div>Loading flights from ${originCode}…</div>`);
+  try{
+    const res = await fetch('/api/flights',{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ ..._lastSearchParams, originCode })
+    });
+    const data = await res.json();
+    if(loadEl && loadEl.parentElement) loadEl.parentElement.remove();
+    if(data.error || !data.flights?.length){
+      addAI(`<p>No flights found from ${originCode}. Try another airport.</p>`);
+      return;
+    }
+    renderFlightCards(data.flights, data.destName, data.selectedOrigin, _lastSearchParams);
+  } catch(e){
+    if(loadEl && loadEl.parentElement) loadEl.parentElement.remove();
+    addAI(`<p>Failed to load flights — please try again.</p>`);
+  }
+}
+
 // ── Airport comparison card ──
-function renderComparisonCard(comparison, destName, params){
+function renderComparisonCard(comparison, destName, params, returnDate){
   const { passengers } = params;
+  const cheapestPP = comparison.find(c => c.available)?.cheapestPP;
   const rows = comparison.map(c => {
-    if(!c.available) return `<div class="cmp-row unavailable"><span class="cmp-airport">${c.name}</span><span class="cmp-price">No flights</span></div>`;
-    const cheapest = comparison.find(x => x.available);
-    const isBest = c.origin === cheapest?.origin;
-    return `<div class="cmp-row${isBest?' cmp-best':''}">
-      <span class="cmp-airport">${c.name} <span class="cmp-code">${c.origin}</span></span>
-      <span class="cmp-price">€${c.cheapestPP} <small>/pp</small>${isBest?' <span class="sr-badge cheap">Cheapest</span>':''}</span>
-    </div>`;
+    if(!c.available) return `
+      <div class="cmp-row unavailable">
+        <div class="cmp-left"><span class="cmp-airport">${c.name}</span><span class="cmp-dist">${c.distanceKm ? c.distanceKm+'km away' : ''}</span></div>
+        <span class="cmp-price-na">No flights</span>
+      </div>`;
+    const isBest = c.cheapestPP === cheapestPP;
+    return `
+      <div class="cmp-row${isBest?' cmp-best':''}" onclick="loadFlightsFromAirport('${c.origin}')" role="button" tabindex="0">
+        <div class="cmp-left">
+          <span class="cmp-airport">${c.name} <span class="cmp-code">${c.origin}</span></span>
+          <span class="cmp-dist">${c.distanceKm ? c.distanceKm+'km away' : ''}</span>
+        </div>
+        <div class="cmp-right">
+          <span class="cmp-price">€${c.cheapestPP}<small>/pp</small></span>
+          ${isBest?'<span class="sr-badge cheap">Cheapest</span>':''}
+          <span class="cmp-arrow">›</span>
+        </div>
+      </div>`;
   }).join('');
-  addAI(`<div class="cmp-card"><div class="cmp-title">Return flights to <strong>${destName}</strong> for ${passengers} people</div>${rows}</div>`);
+  addAI(`<div class="cmp-card">
+    <div class="cmp-title">Return flights to <strong>${destName}</strong> · ${passengers} people · tap an airport to see flights</div>
+    ${rows}
+  </div>`);
 }
 
 // ── Skyscanner-style flight cards ──
-function renderFlightCards(flights, destName, bestOrigin, params, effectiveReturn){
+function renderFlightCards(flights, destName, selectedOrigin, params){
   const { passengers } = params;
-  const fmt = iso => iso ? new Date(iso).toLocaleTimeString('en-GB',{ hour:'2-digit', minute:'2-digit' }) : '—';
-  const fmtDate = iso => iso ? new Date(iso).toLocaleDateString('en-GB',{ day:'numeric', month:'short' }) : '';
-  const durStr = min => min ? `${Math.floor(min/60)}h ${min%60}m` : '';
+  const fmt     = iso => iso ? new Date(iso).toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'}) : '—';
+  const fmtDate = iso => iso ? new Date(iso).toLocaleDateString('en-GB',{day:'numeric',month:'short'}) : '';
+  const durStr  = min => min ? `${Math.floor(min/60)}h ${min%60}m` : '';
 
-  const legHtml = (leg, label) => leg ? `
+  const legHtml = (leg, label) => !leg ? '' : `
     <div class="sr-leg-label">${label}</div>
     <div class="sr-route">
       <div>
@@ -468,18 +529,18 @@ function renderFlightCards(flights, destName, bestOrigin, params, effectiveRetur
         <div class="sr-iata">${leg.destination}</div>
         <div class="sr-city">${fmtDate(leg.arrival)}</div>
       </div>
-    </div>` : '';
+    </div>`;
 
   const cards = flights.map((f,i) => `
     <div class="sr-card">
       <div class="sr-card-body">
         <div class="sr-airline-row">
-          ${f.outbound?.logoUrl ? `<img src="${f.outbound.logoUrl}" class="sr-logo" alt="${f.outbound.carrier}">` : `<div class="sr-logo" style="background:var(--sand-mid);display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:700">${f.outbound?.carrierCode||'?'}</div>`}
+          ${f.outbound?.logoUrl?`<img src="${f.outbound.logoUrl}" class="sr-logo" alt="${f.outbound.carrier}">`:`<div class="sr-logo" style="background:var(--sand-mid);display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:700">${f.outbound?.carrierCode||'?'}</div>`}
           <span class="sr-airline-name">${f.outbound?.carrier||''}</span>
           ${i===0?'<span class="sr-badge best">Best value</span>':''}
         </div>
         ${legHtml(f.outbound,'Outbound')}
-        ${f.return ? `<div class="sr-leg-divider"></div>${legHtml(f.return,'Return')}` : ''}
+        ${f.return?`<div class="sr-leg-divider"></div>${legHtml(f.return,'Return')}`:''}
       </div>
       <div class="sr-footer">
         <div>
@@ -490,7 +551,7 @@ function renderFlightCards(flights, destName, bestOrigin, params, effectiveRetur
       </div>
     </div>`).join('');
 
-  addAI(`<p>Showing flights from <strong>${bestOrigin||''}</strong> — <strong>${passengers} people</strong>, return trip:</p>${cards}`);
+  addAI(`<p>Flights from <strong>${selectedOrigin?.name||selectedOrigin?.iata||''}</strong> to <strong>${destName}</strong> · ${passengers} people · return trip</p>${cards}`);
 }
 
 // HELPERS
