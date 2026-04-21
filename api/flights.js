@@ -62,12 +62,15 @@ function headers() {
 }
 
 async function lookupIATA(query) {
-  const url = `https://api.duffel.com/places/suggestions?query=${encodeURIComponent(query)}`;
-  const r = await fetch(url, { headers: headers() });
-  const json = await r.json();
-  const hit = json?.data?.find(p => p.type === 'airport') || json?.data?.[0];
-  if (!hit) return null;
-  return { iata: hit.iata_code, name: hit.name, cityName: hit.city_name || hit.name };
+  const attempts = [query, query.split(/[,\s]/)[0]].filter(Boolean);
+  for (const q of attempts) {
+    const url = `https://api.duffel.com/places/suggestions?query=${encodeURIComponent(q)}`;
+    const r = await fetch(url, { headers: headers() });
+    const json = await r.json();
+    const hit = json?.data?.find(p => p.type === 'airport') || json?.data?.[0];
+    if (hit?.iata_code) return { iata: hit.iata_code, name: hit.name, cityName: hit.city_name || hit.name };
+  }
+  return null;
 }
 
 async function searchFromOrigin(org, dest, departDate, returnDate, passengers, cabin, directOnly = false) {
