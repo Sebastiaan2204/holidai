@@ -15,7 +15,7 @@ async function rapidGet(path) {
     headers: { 'X-RapidAPI-Key': KEY, 'X-RapidAPI-Host': HOST },
   });
   const json = await r.json();
-  console.log('RapidAPI status:', r.status, 'response:', JSON.stringify(json).slice(0, 300));
+  console.log('RapidAPI status:', r.status, 'response:', JSON.stringify(json).slice(0, 500));
   return json;
 }
 
@@ -28,6 +28,18 @@ async function lookupAirport(query) {
   }
   console.log('Airport found:', hit.skyId, hit.entityId, hit.presentation?.title);
   return { skyId: hit.skyId, entityId: hit.entityId, name: hit.presentation?.title || query };
+}
+
+async function searchWithParams(params) {
+  // Try v1 first
+  let data = await rapidGet(`/api/v1/flights/searchFlights?${params}`);
+  if (data?.status !== false && data?.data?.itineraries?.length > 0) {
+    return { data, version: 'v1' };
+  }
+  console.log('v1 failed or empty, trying v2...');
+  // Fall back to v2
+  data = await rapidGet(`/api/v2/flights/searchFlights?${params}`);
+  return { data, version: 'v2' };
 }
 
 export default async function handler(req, res) {
@@ -62,13 +74,29 @@ export default async function handler(req, res) {
     });
     if (returnDate) params.set('returnDate', returnDate);
 
-    const data = await rapidGet(`/api/v2/flights/searchFlights?${params}`);
-    const itineraries = data?.data?.itineraries;
+    let { data, version } = await searchWithParams(params);
 
-    console.log('Itineraries count:', itineraries?.length ?? 'none', 'status:', data?.status, 'message:', data?.message);
+    // If still failing, retry without returnDate
+    if ((data?.status === false || !data?.data?.itineraries?.length) && returnDate) {
+      console.log('Retrying without returnDate...');
+      const paramsOneWay = new URLSearchParams(params);
+      paramsOneWay.delete('returnDate');
+      const retry = await searchWithParams(paramsOneWay);
+      if (retry.data?.data?.itineraries?.length > 0) {
+        data = retry.data;
+        version = retry.version;
+      }
+    }
+
+    const itineraries = data?.data?.itineraries;
+    console.log('Itineraries count:', itineraries?.length ?? 'none', 'version:', version, 'status:', data?.status, 'message:', data?.message);
 
     if (!itineraries || itineraries.length === 0) {
-      return res.json({ flights: [], destName: dest.name, debug: { status: data?.status, message: data?.message } });
+      return res.json({
+        flights: [],
+        destName: dest.name,
+        debug: { status: data?.status, message: data?.message, version },
+      });
     }
 
     const flights = itineraries.slice(0, 5).map((it) => {
