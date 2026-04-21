@@ -1,133 +1,102 @@
-const HOST = 'sky-scrapper.p.rapidapi.com';
-const KEY  = process.env.RAPIDAPI_KEY;
+const TOKEN = process.env.DUFFEL_TOKEN;
 
 const ORIGINS = {
-  AMS: { skyId: 'AMS', entityId: '95565060', name: 'Amsterdam Schiphol' },
-  EIN: { skyId: 'EIN', entityId: '95565049', name: 'Eindhoven' },
-  BRU: { skyId: 'BRU', entityId: '95565057', name: 'Brussels' },
-  LGW: { skyId: 'LGW', entityId: '95565051', name: 'London Gatwick' },
+  AMS: { iata: 'AMS', name: 'Amsterdam Schiphol' },
+  EIN: { iata: 'EIN', name: 'Eindhoven' },
+  BRU: { iata: 'BRU', name: 'Brussels' },
+  LGW: { iata: 'LGW', name: 'London Gatwick' },
 };
 
-async function rapidGet(path) {
-  const url = `https://${HOST}${path}`;
-  console.log('RapidAPI GET:', url);
-  const r = await fetch(url, {
-    headers: { 'X-RapidAPI-Key': KEY, 'X-RapidAPI-Host': HOST },
-  });
+const HEADERS = {
+  'Authorization': `Bearer ${TOKEN}`,
+  'Duffel-Version': 'v2',
+  'Content-Type': 'application/json',
+  'Accept': 'application/json',
+};
+
+async function lookupIATA(query) {
+  const url = `https://api.duffel.com/places/suggestions?query=${encodeURIComponent(query)}`;
+  const r = await fetch(url, { headers: HEADERS });
   const json = await r.json();
-  console.log('RapidAPI status:', r.status, 'response:', JSON.stringify(json).slice(0, 500));
-  return json;
-}
-
-async function lookupAirport(query) {
-  const data = await rapidGet(`/api/v1/flights/searchAirport?query=${encodeURIComponent(query)}&locale=en-US`);
-  const hit = data?.data?.[0];
-  if (!hit) {
-    console.log('Airport not found for:', query, 'full response:', JSON.stringify(data));
-    return null;
-  }
-  console.log('Airport found:', hit.skyId, hit.entityId, hit.presentation?.title);
-  return { skyId: hit.skyId, entityId: hit.entityId, name: hit.presentation?.title || query };
-}
-
-async function searchWithParams(params) {
-  // Try v1 first
-  let data = await rapidGet(`/api/v1/flights/searchFlights?${params}`);
-  if (data?.status !== false && data?.data?.itineraries?.length > 0) {
-    return { data, version: 'v1' };
-  }
-  console.log('v1 failed or empty, trying v2...');
-  // Fall back to v2
-  data = await rapidGet(`/api/v2/flights/searchFlights?${params}`);
-  return { data, version: 'v2' };
+  console.log('Place lookup:', r.status, JSON.stringify(json).slice(0, 300));
+  const hit = json?.data?.find(p => p.type === 'airport') || json?.data?.[0];
+  if (!hit) return null;
+  return { iata: hit.iata_code, name: hit.name, cityName: hit.city_name || hit.name };
 }
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).end();
 
   const { origin = 'AMS', destQuery, departDate, returnDate, passengers = 1, cabin = 'economy' } = req.body;
-  console.log('Flight search params:', { origin, destQuery, departDate, returnDate, passengers });
+  console.log('Flight search:', { origin, destQuery, departDate, returnDate, passengers, cabin });
 
-  if (!KEY) {
-    console.error('RAPIDAPI_KEY is not set');
-    return res.status(500).json({ error: 'RAPIDAPI_KEY not configured' });
-  }
+  if (!TOKEN) return res.status(500).json({ error: 'DUFFEL_TOKEN not configured' });
 
   try {
-    const dest = await lookupAirport(destQuery);
+    const dest = await lookupIATA(destQuery);
     if (!dest) return res.status(404).json({ error: `Could not find airport for: ${destQuery}` });
+    console.log('Destination:', dest);
 
     const org = ORIGINS[origin] || ORIGINS.AMS;
 
-    const params = new URLSearchParams({
-      originSkyId:         org.skyId,
-      destinationSkyId:    dest.skyId,
-      originEntityId:      org.entityId,
-      destinationEntityId: dest.entityId,
-      date:                departDate,
-      cabinClass:          cabin,
-      adults:              String(passengers),
-      sortBy:              'best',
-      currency:            'EUR',
-      market:              'en-GB',
-      countryCode:         'NL',
+    const slices = [{ origin: org.iata, destination: dest.iata, departure_date: departDate }];
+    if (returnDate) slices.push({ origin: dest.iata, destination: org.iata, departure_date: returnDate });
+
+    const body = {
+      data: {
+        slices,
+        passengers: Array.from({ length: Number(passengers) }, () => ({ type: 'adult' })),
+        cabin_class: cabin,
+      },
+    };
+
+    const r = await fetch('https://api.duffel.com/air/offer_requests?return_offers=true', {
+      method: 'POST',
+      headers: HEADERS,
+      body: JSON.stringify(body),
     });
-    if (returnDate) params.set('returnDate', returnDate);
 
-    let { data, version } = await searchWithParams(params);
+    const json = await r.json();
+    console.log('Duffel status:', r.status, 'offers:', json?.data?.offers?.length, 'errors:', JSON.stringify(json?.errors).slice(0, 300));
 
-    // If still failing, retry without returnDate
-    if ((data?.status === false || !data?.data?.itineraries?.length) && returnDate) {
-      console.log('Retrying without returnDate...');
-      const paramsOneWay = new URLSearchParams(params);
-      paramsOneWay.delete('returnDate');
-      const retry = await searchWithParams(paramsOneWay);
-      if (retry.data?.data?.itineraries?.length > 0) {
-        data = retry.data;
-        version = retry.version;
-      }
+    if (r.status !== 201 || !json?.data?.offers?.length) {
+      return res.json({ flights: [], destName: dest.cityName, debug: json?.errors || json?.meta });
     }
 
-    const itineraries = data?.data?.itineraries;
-    console.log('Itineraries count:', itineraries?.length ?? 'none', 'version:', version, 'status:', data?.status, 'message:', data?.message);
+    const orgCode = org.iata.toLowerCase();
+    const dstCode = dest.iata.toLowerCase();
 
-    if (!itineraries || itineraries.length === 0) {
-      return res.json({
-        flights: [],
-        destName: dest.name,
-        debug: { status: data?.status, message: data?.message, version },
-      });
-    }
+    const flights = json.data.offers.slice(0, 5).map((offer) => {
+      const slice = offer.slices[0];
+      const seg   = slice.segments[0];
+      const mc    = seg.marketing_carrier;
+      const total = Math.round(parseFloat(offer.total_amount));
+      const pp    = Math.round(total / Number(passengers));
 
-    const flights = itineraries.slice(0, 5).map((it) => {
-      const leg     = it.legs[0];
-      const carrier = leg.carriers.marketing[0];
-      const total   = Math.round(it.price.raw);
-      const pp      = Math.round(it.price.raw / passengers);
-      const orgCode = org.skyId.toLowerCase();
-      const dstCode = dest.skyId.toLowerCase();
+      // Parse ISO 8601 duration PT2H30M → minutes
+      const dur = slice.duration || '';
+      const durationMin = (parseInt(dur.match(/(\d+)H/)?.[1] || 0) * 60) + parseInt(dur.match(/(\d+)M/)?.[1] || 0);
 
       return {
-        id:              it.id,
-        airline:         carrier.name,
-        airlineCode:     carrier.alternateId,
-        logoUrl:         carrier.logoUrl,
-        origin:          leg.origin.displayCode,
-        originCity:      leg.origin.name,
-        destination:     leg.destination.displayCode,
-        destinationCity: leg.destination.name,
-        departure:       leg.departure,
-        arrival:         leg.arrival,
-        durationMin:     leg.durationInMinutes,
-        stops:           leg.stopCount,
+        id:              offer.id,
+        airline:         mc.name,
+        airlineCode:     mc.iata_code,
+        logoUrl:         mc.logo_symbol_url || mc.logo_lockup_url,
+        origin:          seg.origin.iata_code,
+        originCity:      seg.origin.city_name || seg.origin.name,
+        destination:     seg.destination.iata_code,
+        destinationCity: seg.destination.city_name || seg.destination.name,
+        departure:       seg.departing_at,
+        arrival:         seg.arriving_at,
+        durationMin,
+        stops:           slice.segments.length - 1,
         priceTotal:      total,
         pricePerPerson:  pp,
-        deepLink:        it.deepLink ||
-          `https://www.skyscanner.net/transport/flights/${orgCode}/${dstCode}/${departDate.replace(/-/g,'')}/?adults=${passengers}&cabinclass=${cabin}`,
+        deepLink:        `https://www.skyscanner.net/transport/flights/${orgCode}/${dstCode}/${departDate.replace(/-/g,'')}/?adults=${passengers}&cabinclass=${cabin}`,
       };
     });
 
-    return res.json({ flights, destName: dest.name, originName: org.name });
+    return res.json({ flights, destName: dest.cityName, originName: org.name });
   } catch (e) {
     console.error('Flight search error:', e.message, e.stack);
     return res.status(500).json({ error: e.message });
