@@ -1,0 +1,935 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>holid.ai — Smarter group travel</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,400;1,9..144,300;1,9..144,400&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet"/>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/topojson-client@3/dist/topojson-client.min.js"></script>
+<style>
+:root{--sand:#F6F1E9;--sand-mid:#EDE6DA;--sand-dark:#DDD4C4;--ink:#1A1814;--ink-muted:#6B6460;--ink-faint:#AEA8A1;--accent:#E8622A;--accent-dim:#FDF0EB;--teal:#1A8A72;--teal-dim:#E3F5F0;--white:#FFFFFF;--font-d:'Fraunces',serif;--font-b:'DM Sans',sans-serif;--radius:14px}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;-webkit-font-smoothing:antialiased}
+html,body{height:100%;overflow:hidden}
+body{background:var(--sand);font-family:var(--font-b);color:var(--ink);display:flex;flex-direction:column}
+header{display:flex;align-items:center;justify-content:space-between;padding:16px 28px;border-bottom:1px solid var(--sand-dark);background:var(--sand);flex-shrink:0;z-index:50}
+.logo{font-family:var(--font-d);font-size:20px;font-weight:400;font-style:italic;cursor:pointer;text-decoration:none;color:inherit}
+.logo b{color:var(--accent);font-weight:400}
+.header-tabs{display:flex;gap:4px;background:var(--sand-mid);border-radius:10px;padding:3px}
+.tab{padding:6px 16px;border-radius:8px;font-size:13px;font-weight:500;color:var(--ink-muted);cursor:pointer;transition:all .15s;border:none;background:none;font-family:var(--font-b)}
+.tab.active{background:var(--white);color:var(--ink);box-shadow:0 1px 3px rgba(0,0,0,.08)}
+.header-right{display:flex;align-items:center;gap:16px}
+.header-link{font-size:13px;color:var(--ink-muted);text-decoration:none;transition:color .15s}
+.header-link:hover{color:var(--ink)}
+.main{flex:1;display:flex;flex-direction:column;overflow:hidden}
+.view{flex:1;display:flex;flex-direction:column;overflow:hidden}
+.view.hidden{display:none}
+.hero{flex-shrink:0;text-align:center;padding:52px 24px 28px;transition:all .4s ease;max-width:640px;margin:0 auto;width:100%}
+.hero.compact{padding:16px 24px 12px}
+.hero-eyebrow{font-size:11px;text-transform:uppercase;letter-spacing:.1em;color:var(--ink-faint);font-weight:500;margin-bottom:16px;transition:all .3s}
+.hero.compact .hero-eyebrow{opacity:0;height:0;margin:0;overflow:hidden}
+.hero-headline{font-family:var(--font-d);font-size:clamp(26px,4vw,50px);font-weight:300;line-height:1.15;margin-bottom:12px;transition:all .35s}
+.hero-headline em{font-style:italic;color:var(--accent)}
+.hero.compact .hero-headline{font-size:clamp(15px,2vw,18px);margin-bottom:0}
+.hero-sub{font-size:15px;color:var(--ink-muted);line-height:1.6;max-width:460px;margin:0 auto 24px;transition:all .35s}
+.hero.compact .hero-sub{opacity:0;max-height:0;overflow:hidden;margin:0}
+.hero-cta{display:inline-flex;align-items:center;gap:8px;background:var(--accent);color:var(--white);border:none;border-radius:30px;padding:13px 24px;font-family:var(--font-b);font-size:14px;font-weight:500;cursor:pointer;transition:opacity .15s}
+.hero-cta:hover{opacity:.88}
+.hero.compact .hero-cta{display:none}
+.convo-wrap{flex:1;overflow-y:auto;min-height:0}
+.convo-wrap::-webkit-scrollbar{width:4px}
+.convo-wrap::-webkit-scrollbar-thumb{background:var(--sand-dark);border-radius:4px}
+.convo-inner{max-width:640px;margin:0 auto;padding:0 24px}
+.convo{display:flex;flex-direction:column;padding:8px 0 40px}
+.msg-user{display:flex;justify-content:flex-end;margin:12px 0 4px}
+.user-bubble{background:var(--ink);color:var(--white);border-radius:14px 14px 4px 14px;padding:10px 15px;font-size:14px;line-height:1.6;max-width:82%;animation:popIn .18s ease both}
+@keyframes popIn{from{opacity:0;transform:scale(.96) translateY(4px)}to{opacity:1;transform:none}}
+.msg-ai{display:flex;align-items:flex-start;gap:10px;margin:12px 0 4px}
+.ai-av{width:28px;height:28px;border-radius:50%;background:var(--ink);display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:2px}
+.ai-av svg{width:13px;height:13px}
+.ai-body{flex:1;animation:fadeUp .2s ease both}
+@keyframes fadeUp{from{opacity:0;transform:translateY(5px)}to{opacity:1;transform:none}}
+.ai-label{font-size:10px;font-weight:500;color:var(--ink-faint);text-transform:uppercase;letter-spacing:.07em;margin-bottom:5px}
+.ai-text{font-size:14px;line-height:1.75;color:var(--ink)}
+.ai-text p{margin-bottom:7px}
+.ai-text p:last-child{margin-bottom:0}
+.typing-wrap{display:flex;align-items:flex-start;gap:10px;margin:12px 0 4px}
+.tdots{display:flex;gap:4px;padding:5px 2px}
+.td{width:5px;height:5px;border-radius:50%;background:var(--ink-faint);animation:tdB .8s infinite}
+.td:nth-child(2){animation-delay:.13s}.td:nth-child(3){animation-delay:.26s}
+@keyframes tdB{0%,60%,100%{transform:translateY(0)}30%{transform:translateY(-4px)}}
+.input-zone{flex-shrink:0;padding:10px 24px 20px;background:var(--sand)}
+.input-wrap{max-width:640px;margin:0 auto;display:flex;gap:8px;align-items:flex-end}
+.trip-input{flex:1;background:var(--white);border:1.5px solid var(--sand-dark);border-radius:14px;padding:12px 16px;font-family:var(--font-b);font-size:14px;color:var(--ink);resize:none;outline:none;min-height:46px;max-height:120px;line-height:1.5;transition:border-color .2s}
+.trip-input:focus{border-color:var(--accent)}
+.trip-input::placeholder{color:var(--ink-faint)}
+.send-btn{width:46px;height:46px;border-radius:12px;background:var(--accent);border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:opacity .15s}
+.send-btn:hover{opacity:.85}
+.sugs{display:flex;gap:7px;flex-wrap:wrap;margin-top:12px}
+.sug{background:var(--white);border:1.5px solid var(--sand-dark);border-radius:20px;padding:8px 15px;font-family:var(--font-b);font-size:13px;color:var(--ink-muted);cursor:pointer;transition:all .15s;white-space:nowrap}
+.sug:hover{border-color:var(--accent);color:var(--accent);background:var(--accent-dim)}
+/* ── Skyscanner-style flight result cards ── */
+.sr-card{background:var(--white);border:1.5px solid var(--sand-dark);border-radius:16px;margin-top:10px;overflow:hidden;transition:border-color .15s,box-shadow .15s}
+.sr-card:hover{border-color:#0770e3;box-shadow:0 2px 12px rgba(7,112,227,.10)}
+.sr-card-body{padding:16px 18px}
+.sr-airline-row{display:flex;align-items:center;gap:9px;margin-bottom:14px}
+.sr-logo{width:28px;height:28px;border-radius:6px;object-fit:contain;border:1px solid var(--sand-dark)}
+.sr-airline-name{font-size:13px;color:var(--ink-muted);font-weight:500}
+.sr-badge{margin-left:auto;font-size:10px;font-weight:600;padding:3px 9px;border-radius:20px}
+.sr-badge.best{background:#e8f5e9;color:#2e7d32}
+.sr-badge.cheap{background:#fff3e0;color:#e65100}
+.sr-route{display:grid;grid-template-columns:auto 1fr auto;align-items:center;gap:14px;margin-bottom:0}
+.sr-time{font-family:var(--font-d);font-size:24px;font-weight:300;line-height:1}
+.sr-iata{font-size:11px;font-weight:600;color:var(--ink-muted);margin-top:4px;letter-spacing:.04em}
+.sr-city{font-size:10px;color:var(--ink-faint);margin-top:1px}
+.sr-mid{text-align:center}
+.sr-dur{font-size:11px;color:var(--ink-muted);margin-bottom:6px;font-weight:500}
+.sr-line{height:1px;background:var(--sand-dark);position:relative}
+.sr-line::after{content:'▶';position:absolute;right:-6px;top:-6px;font-size:10px;color:var(--ink-faint)}
+.sr-stops{font-size:11px;margin-top:6px;font-weight:500}
+.sr-stops.direct{color:#2e7d32}
+.sr-stops.stop{color:var(--ink-muted)}
+.sr-footer{display:flex;align-items:center;justify-content:space-between;padding:13px 18px;background:var(--sand);border-top:1px solid var(--sand-dark)}
+.sr-price-pp{font-family:var(--font-d);font-size:26px;font-weight:300;line-height:1}
+.sr-price-pp small{font-family:var(--font-b);font-size:12px;color:var(--ink-muted);font-weight:400}
+.sr-price-total{font-size:11px;color:var(--ink-muted);margin-top:3px}
+.sr-book{background:#0770e3;color:#fff;border:none;border-radius:10px;padding:11px 20px;font-family:var(--font-b);font-size:13px;font-weight:600;cursor:pointer;text-decoration:none;display:inline-block;transition:background .15s;white-space:nowrap}
+.sr-book:hover{background:#0558b8}
+.sr-searching{display:flex;align-items:center;gap:10px;padding:14px 0;color:var(--ink-muted);font-size:13px}
+.sr-spin{width:18px;height:18px;border:2px solid var(--sand-dark);border-top-color:var(--teal);border-radius:50%;animation:spin .7s linear infinite;flex-shrink:0}
+@keyframes spin{to{transform:rotate(360deg)}}
+.inline-input::placeholder{color:var(--ink-faint)}
+.inline-send{background:var(--accent);color:var(--white);border:none;border-radius:10px;padding:10px 16px;font-family:var(--font-b);font-size:13px;font-weight:500;cursor:pointer;white-space:nowrap;transition:opacity .15s;flex-shrink:0}
+.inline-send:hover{opacity:.85}
+.dateprikker-view{flex:1;overflow-y:auto;padding:32px 24px 80px}
+.dp-wrap{max-width:640px;margin:0 auto}
+.dp-title{font-family:var(--font-d);font-size:28px;font-weight:300;margin-bottom:8px}
+.dp-title em{font-style:italic;color:var(--accent)}
+.dp-sub{font-size:14px;color:var(--ink-muted);line-height:1.6;margin-bottom:20px}
+.dp-share-row{display:flex;gap:8px;align-items:center;background:var(--white);border:1.5px solid var(--sand-dark);border-radius:12px;padding:11px 16px;margin-bottom:20px}
+.dp-share-link{flex:1;font-size:12px;color:var(--ink-muted);font-family:monospace;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.dp-share-btn{background:var(--accent);color:white;border:none;border-radius:8px;padding:8px 14px;font-family:var(--font-b);font-size:12px;font-weight:500;cursor:pointer;white-space:nowrap;transition:opacity .15s;flex-shrink:0}
+.dp-share-btn:hover{opacity:.85}
+.dp-section-label{font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:var(--ink-faint);font-weight:500;margin-bottom:14px}
+.dp-month{margin-bottom:24px}
+.dp-month-title{font-size:14px;font-weight:500;color:var(--ink);margin-bottom:10px;text-transform:capitalize}
+.dp-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:5px}
+.dp-dow{font-size:10px;font-weight:500;color:var(--ink-faint);text-align:center;padding-bottom:6px;text-transform:uppercase;letter-spacing:.05em}
+.dp-day{aspect-ratio:1;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:14px;cursor:pointer;transition:all .1s;color:var(--ink);background:var(--white);border:1.5px solid var(--sand-dark);user-select:none;-webkit-tap-highlight-color:transparent}
+.dp-day:hover{border-color:#22C55E;background:#F0FDF4}
+.dp-day.selected{background:#22C55E;color:white;border-color:#22C55E;font-weight:500}
+.dp-day.today{border-color:var(--accent)}
+.dp-day.past{color:var(--ink-faint);cursor:default;background:var(--sand);border-color:transparent;font-size:12px}
+.dp-day.past:hover{border-color:transparent;background:var(--sand)}
+.dp-day.empty{background:transparent;cursor:default;border-color:transparent}
+.dp-save-bar{position:sticky;bottom:0;background:linear-gradient(transparent,var(--sand) 30%);padding:20px 0 0;display:flex;gap:10px;align-items:center}
+.dp-count{font-size:13px;color:#16A34A;font-weight:500;flex:1}
+.dp-save-btn{background:var(--accent);color:white;border:none;border-radius:12px;padding:12px 24px;font-family:var(--font-b);font-size:14px;font-weight:500;cursor:pointer;transition:opacity .15s}
+.dp-save-btn:hover{opacity:.85}
+.dp-saved{background:var(--white);border:1.5px solid var(--teal);border-radius:var(--radius);padding:16px;margin-top:16px}
+.dp-saved-title{font-size:13px;font-weight:500;color:var(--teal);margin-bottom:6px}
+.dp-saved-body{font-size:13px;color:var(--ink-muted);line-height:1.6}
+.chat-fab{position:fixed;bottom:24px;right:24px;z-index:500;background:var(--accent);border-radius:30px;padding:12px 18px 12px 14px;display:flex;align-items:center;gap:8px;cursor:pointer;box-shadow:0 4px 16px rgba(232,98,42,.35);transition:all .2s}
+.chat-fab:hover{transform:translateY(-2px)}
+.chat-fab-label{color:white;font-size:13px;font-weight:500;white-space:nowrap}
+.assistant-panel{position:fixed;bottom:82px;right:24px;z-index:499;width:320px;background:var(--white);border-radius:18px;border:1px solid var(--sand-dark);display:flex;flex-direction:column;overflow:hidden;transform:scale(.95) translateY(10px);opacity:0;pointer-events:none;transition:all .2s ease;max-height:440px;box-shadow:0 8px 32px rgba(0,0,0,.12)}
+.assistant-panel.open{transform:scale(1) translateY(0);opacity:1;pointer-events:all}
+.ap-header{display:flex;align-items:center;justify-content:space-between;padding:14px 16px;border-bottom:1px solid var(--sand-mid);flex-shrink:0}
+.ap-title{font-size:14px;font-weight:500}
+.ap-sub{font-size:11px;color:var(--ink-muted);margin-top:1px}
+.ap-close{background:none;border:none;font-size:14px;color:var(--ink-muted);cursor:pointer;width:24px;height:24px;display:flex;align-items:center;justify-content:center;border-radius:50%;transition:background .15s}
+.ap-close:hover{background:var(--sand)}
+.ap-messages{flex:1;overflow-y:auto;padding:14px 14px 8px;display:flex;flex-direction:column;gap:8px}
+.ap-msg-ai .ap-bubble{background:var(--sand);border-radius:4px 12px 12px 12px;padding:9px 12px;font-size:13px;line-height:1.6;max-width:90%}
+.ap-msg-user{display:flex;justify-content:flex-end}
+.ap-msg-user .ap-bubble{background:var(--ink);color:white;border-radius:12px 12px 4px 12px;padding:9px 12px;font-size:13px;line-height:1.6;max-width:90%}
+.ap-input-row{display:flex;gap:8px;padding:10px 12px 12px;border-top:1px solid var(--sand-mid);flex-shrink:0}
+.ap-input{flex:1;background:var(--sand);border:1px solid var(--sand-dark);border-radius:10px;padding:9px 12px;font-family:var(--font-b);font-size:13px;color:var(--ink);outline:none;transition:border-color .15s}
+.ap-input:focus{border-color:var(--accent)}
+.ap-send{width:34px;height:34px;border-radius:9px;background:var(--accent);border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.priv-bg{display:none;position:fixed;inset:0;background:rgba(26,24,20,.5);z-index:200;align-items:flex-start;justify-content:flex-end}
+.priv-bg.open{display:flex}
+.priv-panel{background:var(--white);width:100%;max-width:420px;height:100vh;overflow-y:auto}
+.priv-header{display:flex;align-items:center;justify-content:space-between;padding:20px 24px;border-bottom:1px solid var(--sand-mid);position:sticky;top:0;background:var(--white)}
+.priv-title{font-family:var(--font-d);font-size:17px;font-weight:400}
+.priv-close{width:28px;height:28px;border-radius:50%;background:var(--sand);border:none;cursor:pointer;font-size:13px;color:var(--ink-muted)}
+.priv-body{padding:22px 24px;font-size:13px;color:var(--ink-muted);line-height:1.8}
+@media(max-width:600px){
+  header{padding:13px 16px}
+  .hero{padding:36px 16px 20px}
+  .input-zone{padding:8px 16px 16px}
+  .convo-inner{padding:0 16px}
+  .chat-fab-label{display:none}
+  .chat-fab{padding:14px}
+  .assistant-panel{width:calc(100vw - 32px);right:16px}
+  .header-link{display:none}
+}
+
+/* FEATURE GRID */
+.feature-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-top:32px;text-align:left}
+.feature-card{background:var(--white);border:1.5px solid var(--sand-dark);border-radius:14px;padding:18px 16px}
+.feature-icon{font-size:22px;margin-bottom:10px}
+.feature-title{font-size:13px;font-weight:500;color:var(--ink);margin-bottom:6px;line-height:1.4}
+.feature-body{font-size:12px;color:var(--ink-muted);line-height:1.6}
+.hero.compact .feature-grid{display:none}
+@media(max-width:600px){.feature-grid{grid-template-columns:1fr}}
+
+/* ── SETTINGS BAR ── */
+.settings-bar{display:flex;align-items:center;gap:2px;background:var(--sand-mid);border-radius:10px;padding:3px}
+.setting-pill{padding:5px 11px;border-radius:7px;font-size:12px;font-weight:500;color:var(--ink-muted);cursor:pointer;border:none;background:none;font-family:var(--font-b);white-space:nowrap;transition:all .15s}
+.setting-pill:hover{background:var(--white);color:var(--ink);box-shadow:0 1px 3px rgba(0,0,0,.08)}
+
+/* ── QUICK-START BUTTONS ── */
+.qs-stack{display:flex;flex-direction:column;gap:9px;margin-top:22px;max-width:350px}
+.qs-btn{display:flex;align-items:center;gap:14px;background:var(--white);border:1.5px solid var(--sand-dark);border-radius:14px;padding:13px 16px;cursor:pointer;transition:all .18s;text-align:left;font-family:var(--font-b);width:100%}
+.qs-btn:hover{border-color:var(--accent);background:var(--accent-dim);transform:translateX(4px)}
+.qs-icon{font-size:18px;flex-shrink:0;width:36px;height:36px;background:var(--sand);border-radius:10px;display:flex;align-items:center;justify-content:center}
+.qs-title{font-size:13px;font-weight:500;color:var(--ink);line-height:1.3}
+.qs-sub{font-size:11px;color:var(--ink-muted);margin-top:2px;line-height:1.4}
+.hero.compact .qs-stack{display:none}
+
+/* ── GLOBE ── */
+#view-planner{position:relative;overflow:hidden}
+#globe-container{position:absolute;right:10%;top:5%;bottom:5%;width:44%;pointer-events:all;z-index:2;transition:opacity .6s ease;cursor:grab}
+#globe-container:active{cursor:grabbing}
+#globe-container.gone{opacity:0;pointer-events:none}
+#globe-c{width:100%;height:100%;display:block}
+/* Left-align hero in landing state so content + globe don't fight */
+#hero:not(.compact){text-align:left;margin:0;padding:52px 0 28px 8%;max-width:46%}
+#hero:not(.compact) .hero-sub{margin:0 0 24px}
+#hero:not(.compact) .feature-grid{display:none}
+.globe-tip{position:fixed;background:var(--ink);color:#fff;font-family:var(--font-b);font-size:12px;font-weight:500;padding:6px 12px;border-radius:8px;pointer-events:none;opacity:0;transition:opacity .15s;z-index:20;white-space:nowrap;box-shadow:0 2px 8px rgba(0,0,0,.18)}
+.globe-tip.visible{opacity:1}
+.hero-sub-cta{color:var(--teal);font-weight:500;white-space:nowrap}
+</style>
+</head>
+<body>
+<header>
+  <a href="/" class="logo">holid<b>.</b>ai</a>
+  <div class="header-right">
+    <div class="settings-bar">
+      <button class="setting-pill" id="pill-country" onclick="cycleCountry()">🇳🇱 NL</button>
+      <button class="setting-pill" id="pill-currency" onclick="cycleCurrency()">€ EUR</button>
+      <button class="setting-pill" id="pill-temp" onclick="toggleTemp()">°C</button>
+    </div>
+    <a href="#" class="header-link" onclick="openPriv();return false">Privacy</a>
+  </div>
+</header>
+
+<div class="main">
+
+  <!-- TRIP PLANNER -->
+  <div class="view" id="view-planner">
+    <div class="hero" id="hero">
+      <div class="hero-eyebrow">AI-powered group travel</div>
+      <h1 class="hero-headline">Finally getting that trip<br><em>out of the group chat.</em></h1>
+      <p class="hero-sub">Tell us what you need — or <span class="hero-sub-cta">pick a city on the globe&nbsp;→</span></p>
+      <div class="qs-stack">
+        <button class="qs-btn" onclick="launchWithIntent('I know where I want to go')">
+          <div class="qs-icon">📍</div>
+          <div><div class="qs-title">I know where I want to go</div><div class="qs-sub">Find cheapest flights, compare airports and book a stay</div></div>
+        </button>
+        <button class="qs-btn" onclick="launchWithIntent('Help me find a destination')">
+          <div class="qs-icon">🌍</div>
+          <div><div class="qs-title">Help me find a destination</div><div class="qs-sub">Get personalised suggestions based on your group and budget</div></div>
+        </button>
+        <button class="qs-btn" onclick="launchWithIntent('Find the cheapest route for our group')">
+          <div class="qs-icon">✈️</div>
+          <div><div class="qs-title">Find the cheapest route</div><div class="qs-sub">Compare airports, unconventional routes and group deals</div></div>
+        </button>
+        <button class="qs-btn" onclick="switchTab('datepicker')">
+          <div class="qs-icon">📅</div>
+          <div><div class="qs-title">Find a date that works for everyone</div><div class="qs-sub">Group date picker — no more WhatsApp chaos</div></div>
+        </button>
+      </div>
+    </div>
+    <div id="globe-container">
+      <canvas id="globe-c"></canvas>
+    </div>
+    <div class="globe-tip" id="globe-tip"></div>
+
+    <div class="convo-wrap" id="convo-wrap">
+      <div class="convo-inner"><div class="convo" id="convo"></div></div>
+    </div>
+    <div class="input-zone" id="input-zone" style="display:none">
+      <div class="input-wrap">
+        <textarea class="trip-input" id="trip-input" rows="1" placeholder="e.g. Amsterdam to Seville, 8 people, September…"></textarea>
+        <button class="send-btn" onclick="handleSend()">
+          <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M2 8H14M14 8L9 3M14 8L9 13" stroke="white" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- DATUMPRIKKER -->
+  <div class="view hidden" id="view-datepicker">
+    <div class="dateprikker-view">
+      <div class="dp-wrap">
+        <h2 class="dp-title">When is <em>everyone</em> free?</h2>
+        <p class="dp-sub">Tap the days you are free for a trip. Share the link with your group. holid.ai shows which weeks work for everyone.</p>
+        <div class="dp-share-row">
+          <div class="dp-share-link" id="dp-share-link">holid.ai/datumprikker/...</div>
+          <button class="dp-share-btn" onclick="copyDpLink()">Copy link</button>
+        </div>
+        <div class="dp-section-label">Tap the days you are free</div>
+        <div id="dp-calendar"></div>
+        <div class="dp-save-bar">
+          <div class="dp-count" id="dp-count"></div>
+          <button class="dp-save-btn" onclick="saveDpAvailability()">Save availability</button>
+        </div>
+        <div id="dp-saved" style="display:none"></div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<!-- FLOATING ASSISTANT -->
+<div class="chat-fab" onclick="toggleAssistant()">
+  <svg width="18" height="18" viewBox="0 0 22 22" fill="none"><path d="M11 2C6.03 2 2 5.69 2 10.2c0 2.4 1.1 4.56 2.87 6.07L4 20l4.13-1.53C9.3 18.8 10.13 19 11 19c4.97 0 9-3.69 9-8.2C20 6.29 15.97 2 11 2z" fill="white"/></svg>
+  <span class="chat-fab-label">Quick trip question?</span>
+</div>
+<div class="assistant-panel" id="assistant-panel">
+  <div class="ap-header">
+    <div><div class="ap-title">Quick trip question?</div><div class="ap-sub">Ask about destinations, timing, packing — I know your trip context</div></div>
+    <button class="ap-close" onclick="toggleAssistant()">x</button>
+  </div>
+  <div class="ap-messages" id="ap-messages">
+    <div class="ap-msg ap-msg-ai"><div class="ap-bubble">Ask me anything — best time to visit, local tips, what to pack, alternative routes.</div></div>
+  </div>
+  <div class="ap-input-row">
+    <input class="ap-input" id="ap-input" type="text" placeholder="e.g. Is September good for Seville?" autocomplete="off"/>
+    <button class="ap-send" onclick="sendAssistantMsg()">
+      <svg width="14" height="14" viewBox="0 0 16 16" fill="none"><path d="M2 8H14M14 8L9 3M14 8L9 13" stroke="white" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+    </button>
+  </div>
+</div>
+
+<!-- PRIVACY -->
+<div class="priv-bg" id="priv-bg" onclick="closePriv(event)">
+  <div class="priv-panel">
+    <div class="priv-header">
+      <div class="priv-title">Privacy</div>
+      <button class="priv-close" onclick="closePriv()">x</button>
+    </div>
+    <div class="priv-body">
+      <p>holid.ai does not store personal data beyond what is needed to run your trip search. We never sell data to third parties.</p>
+      <p style="margin-top:12px">The datumprikker stores only dates you mark as free. No names, no calendar access, no event titles.</p>
+      <p style="margin-top:12px">Flight and accommodation searches are powered by affiliate links to Skyscanner, Booking.com, Airbnb, Trainline, and Omio. We earn a small commission if you book, at no extra cost to you.</p>
+    </div>
+  </div>
+</div>
+
+<script>
+const heroEl = document.getElementById('hero');
+const convoEl = document.getElementById('convo');
+const inputZoneEl = document.getElementById('input-zone');
+const inputEl = document.getElementById('trip-input');
+
+const trip = { origin:'AMS', destination:null };
+let chatStarted = false;
+const chatMessages = [];
+
+// TABS
+function switchTab(tab){
+  document.getElementById('view-planner').classList.toggle('hidden', tab!=='planner');
+  document.getElementById('view-datepicker').classList.toggle('hidden', tab!=='datepicker');
+  if(tab==='datepicker') buildDpCalendar();
+}
+
+// CHAT
+function startChat(){
+  if(chatStarted) return;
+  chatStarted = true;
+  heroEl.classList.add('compact');
+  inputZoneEl.style.display = 'block';
+  inputEl.focus();
+  const gc = document.getElementById('globe-container');
+  if(gc) gc.classList.add('gone');
+}
+
+inputEl.addEventListener('input', ()=>{
+  inputEl.style.height='auto';
+  inputEl.style.height=Math.min(inputEl.scrollHeight,120)+'px';
+});
+inputEl.addEventListener('keydown', e=>{
+  if(e.key==='Enter'&&!e.shiftKey){ e.preventDefault(); handleSend(); }
+});
+function handleSend(){
+  const text=inputEl.value.trim(); if(!text) return;
+  startChat();
+  inputEl.value=''; inputEl.style.height='auto';
+  addUser(text);
+  callChatAPI(text);
+}
+
+// ── AI conversation ──
+async function callChatAPI(text){
+  chatMessages.push({ role:'user', content:text });
+  showTyping();
+  try{
+    const res = await fetch('/api/chat',{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ messages: chatMessages, tripContext: trip })
+    });
+    const data = await res.json();
+    removeTyping();
+
+    if(data.action === 'search_flights'){
+      if(data.reply) addAI(`<p>${data.reply}</p>`);
+      chatMessages.push({ role:'assistant', content: data.reply||'Searching…' });
+      await callFlightsAPI(data.searchParams);
+    } else {
+      addAI(`<p>${data.reply}</p>`);
+      chatMessages.push({ role:'assistant', content: data.reply });
+    }
+  } catch(e){
+    removeTyping();
+    addAI(`<p>Something went wrong — please try again.</p>`);
+  }
+}
+
+// ── Real flight search ──
+async function callFlightsAPI(params){
+  trip.destination = params.destQuery;
+  const loadEl = addAI(`<div class="sr-searching"><div class="sr-spin"></div>Searching live flights for ${params.passengers} people to ${params.destQuery}…</div>`);
+  try{
+    const res = await fetch('/api/flights',{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body: JSON.stringify(params)
+    });
+    const data = await res.json();
+    // Replace loading state with cards
+    if(loadEl && loadEl.parentElement) loadEl.parentElement.remove();
+
+    if(!data.flights || data.flights.length === 0){
+      addAI(`<p>No flights found for that route. Try different dates or a nearby airport.</p>`);
+      return;
+    }
+    renderFlightCards(data.flights, data.destName, params);
+  } catch(e){
+    if(loadEl && loadEl.parentElement) loadEl.parentElement.remove();
+    addAI(`<p>Flight search failed — please try again.</p>`);
+  }
+}
+
+// ── Skyscanner-style flight cards ──
+function renderFlightCards(flights, destName, params){
+  const { passengers, departDate, returnDate } = params;
+  const fmt = iso => {
+    const d = new Date(iso);
+    return d.toLocaleTimeString('en-GB',{ hour:'2-digit', minute:'2-digit' });
+  };
+  const durStr = min => `${Math.floor(min/60)}h ${min%60}m`;
+
+  const cards = flights.map((f,i) => `
+    <div class="sr-card">
+      <div class="sr-card-body">
+        <div class="sr-airline-row">
+          ${f.logoUrl ? `<img src="${f.logoUrl}" class="sr-logo" alt="${f.airline}">` : `<div class="sr-logo" style="background:var(--sand-mid);display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:700">${f.airlineCode||'?'}</div>`}
+          <span class="sr-airline-name">${f.airline}</span>
+          ${i===0?'<span class="sr-badge best">Best value</span>':''}
+          ${i===1&&f.pricePerPerson<flights[0].pricePerPerson?'<span class="sr-badge cheap">Cheapest</span>':''}
+        </div>
+        <div class="sr-route">
+          <div>
+            <div class="sr-time">${fmt(f.departure)}</div>
+            <div class="sr-iata">${f.origin}</div>
+            <div class="sr-city">${f.originCity}</div>
+          </div>
+          <div class="sr-mid">
+            <div class="sr-dur">${durStr(f.durationMin)}</div>
+            <div class="sr-line"></div>
+            <div class="sr-stops ${f.stops===0?'direct':'stop'}">${f.stops===0?'Direct':f.stops+' stop'}</div>
+          </div>
+          <div style="text-align:right">
+            <div class="sr-time">${fmt(f.arrival)}</div>
+            <div class="sr-iata">${f.destination}</div>
+            <div class="sr-city">${f.destinationCity}</div>
+          </div>
+        </div>
+      </div>
+      <div class="sr-footer">
+        <div>
+          <div class="sr-price-pp">€${f.pricePerPerson} <small>/pp</small></div>
+          <div class="sr-price-total">€${f.priceTotal} total · ${passengers} people</div>
+        </div>
+        <a href="${f.deepLink}" target="_blank" rel="noopener" class="sr-book">View on Skyscanner</a>
+      </div>
+    </div>`).join('');
+
+  addAI(`<p>Here are the best flights to <strong>${destName}</strong> for <strong>${passengers} people</strong>:</p>${cards}`);
+}
+
+// HELPERS
+function lockChoices(){ convoEl.querySelectorAll('.sug').forEach(el=>{ el.style.pointerEvents='none'; el.style.opacity='.4'; }); }
+function addUser(t){ startChat(); const d=document.createElement('div'); d.className='msg-user'; d.innerHTML=`<div class="user-bubble">${esc(t)}</div>`; convoEl.appendChild(d); scrollD(); }
+function addAI(html){ const d=document.createElement('div'); d.className='msg-ai'; d.innerHTML=`<div class="ai-av">${aiSvg()}</div><div class="ai-body"><div class="ai-label">holid.ai</div><div class="ai-text">${html}</div></div>`; convoEl.appendChild(d); scrollD(); return d.querySelector('.ai-text'); }
+function showTyping(){ const d=document.createElement('div'); d.className='typing-wrap'; d.id='typing'; d.innerHTML=`<div class="ai-av">${aiSvg()}</div><div class="tdots"><div class="td"></div><div class="td"></div><div class="td"></div></div>`; convoEl.appendChild(d); scrollD(); }
+function removeTyping(){ const t=document.getElementById('typing'); if(t) t.remove(); }
+function scrollD(){ setTimeout(()=>{ const cw=document.getElementById('convo-wrap'); if(cw) cw.scrollTop=cw.scrollHeight; },80); }
+function esc(t){ return String(t).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+function aiSvg(){ return `<svg viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="2.5" fill="white"/><circle cx="8" cy="2.5" r="1.1" fill="white" opacity=".4"/><circle cx="8" cy="13.5" r="1.1" fill="white" opacity=".4"/><circle cx="2.5" cy="8" r="1.1" fill="white" opacity=".4"/><circle cx="13.5" cy="8" r="1.1" fill="white" opacity=".4"/></svg>`; }
+function openPriv(){ document.getElementById('priv-bg').classList.add('open'); }
+function closePriv(e){ if(!e||e.target===document.getElementById('priv-bg')) document.getElementById('priv-bg').classList.remove('open'); }
+
+// DATUMPRIKKER
+const dpSelected=new Set();
+function buildDpCalendar(){
+  const cal=document.getElementById('dp-calendar'); if(!cal||cal.dataset.built) return; cal.dataset.built='true';
+  const code=Math.random().toString(36).substr(2,6).toUpperCase();
+  document.getElementById('dp-share-link').textContent=`${window.location.origin}/room.html?dp=${code}`;
+  const today=new Date(); today.setHours(0,0,0,0);
+  for(let m=0;m<12;m++){
+    const date=new Date(today.getFullYear(),today.getMonth()+m,1);
+    const monthEl=document.createElement('div'); monthEl.className='dp-month';
+    const mn=date.toLocaleDateString('en-GB',{month:'long',year:'numeric'});
+    monthEl.innerHTML=`<div class="dp-month-title">${mn}</div><div class="dp-grid"></div>`;
+    cal.appendChild(monthEl);
+    const grid=monthEl.querySelector('.dp-grid');
+    ['Mo','Tu','We','Th','Fr','Sa','Su'].forEach(d=>{ const h=document.createElement('div'); h.className='dp-dow'; h.textContent=d; grid.appendChild(h); });
+    const fd=date.getDay(); const off=fd===0?6:fd-1;
+    for(let i=0;i<off;i++){ const e=document.createElement('div'); e.className='dp-day empty'; grid.appendChild(e); }
+    const dim=new Date(date.getFullYear(),date.getMonth()+1,0).getDate();
+    for(let day=1;day<=dim;day++){
+      const d=new Date(date.getFullYear(),date.getMonth(),day);
+      const ds=d.toISOString().split('T')[0];
+      const isPast=d<today;
+      const cell=document.createElement('div'); cell.className='dp-day'+(isPast?' past':'');
+      if(dpSelected.has(ds)) cell.classList.add('selected');
+      cell.textContent=day;
+      if(!isPast) cell.addEventListener('click',()=>{ if(dpSelected.has(ds)){dpSelected.delete(ds);cell.classList.remove('selected');}else{dpSelected.add(ds);cell.classList.add('selected');} const c=document.getElementById('dp-count'); if(c) c.textContent=dpSelected.size>0?`${dpSelected.size} days selected`:''; });
+      grid.appendChild(cell);
+    }
+  }
+}
+function copyDpLink(){ const link=document.getElementById('dp-share-link').textContent; navigator.clipboard.writeText(link).then(()=>{ const btn=document.querySelector('.dp-share-btn'); if(btn){btn.textContent='Copied!';setTimeout(()=>btn.textContent='Copy link',2000);} }); }
+function saveDpAvailability(){ if(dpSelected.size===0) return; const el=document.getElementById('dp-saved'); el.style.display='block'; el.innerHTML=`<div class="dp-saved"><div class="dp-saved-title">Availability saved — ${dpSelected.size} days marked free</div><div class="dp-saved-body">Share the link above with your group. Once everyone fills in their availability, holid.ai will show which weeks work for everyone.</div></div>`; }
+
+// ASSISTANT
+const assistantHistory=[];
+function toggleAssistant(){ const p=document.getElementById('assistant-panel'); p.classList.toggle('open'); if(p.classList.contains('open')) setTimeout(()=>document.getElementById('ap-input').focus(),200); }
+async function sendAssistantMsg(){ const input=document.getElementById('ap-input'); const msg=input.value.trim(); if(!msg) return; input.value=''; addAPMessage(msg,'user'); assistantHistory.push({role:'user',content:msg}); const msgs=document.getElementById('ap-messages'); const typing=document.createElement('div'); typing.className='ap-msg ap-msg-ai'; typing.id='ap-typing'; typing.innerHTML='<div class="ap-bubble" style="color:var(--ink-faint)">...</div>'; msgs.appendChild(typing); msgs.scrollTop=msgs.scrollHeight; try{ const res=await fetch('/api/chat',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({messages:assistantHistory,tripContext:trip})}); const data=await res.json(); document.getElementById('ap-typing')?.remove(); const reply=data.reply||data.error||"Sorry, try again."; assistantHistory.push({role:'assistant',content:reply}); addAPMessage(reply,'ai'); }catch(e){ document.getElementById('ap-typing')?.remove(); addAPMessage("Something went wrong.","ai"); } }
+function addAPMessage(text,type){ const msgs=document.getElementById('ap-messages'); const d=document.createElement('div'); d.className=`ap-msg ap-msg-${type}`; d.innerHTML=`<div class="ap-bubble">${text}</div>`; msgs.appendChild(d); msgs.scrollTop=msgs.scrollHeight; }
+document.getElementById('ap-input').addEventListener('keydown',e=>{ if(e.key==='Enter') sendAssistantMsg(); });
+async function sendToAPI(text){ try{ const res=await fetch('/api/chat',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({messages:[{role:'user',content:text}],tripContext:trip})}); const data=await res.json(); if(data.reply) addAI(`<p>${data.reply}</p>`); }catch(e){ addAI(`<p>Something went wrong. Try again.</p>`); } }
+
+// ── 3D GLOBE ──
+(function(){
+  const CITIES = [
+    // Departure airports — orange tier
+    { name:'Amsterdam',      lat:52.37, lon: 4.90,  type:'depart' },
+    { name:'Eindhoven',      lat:51.45, lon: 5.39,  type:'depart' },
+    { name:'Brussels',       lat:50.90, lon: 4.48,  type:'depart' },
+    { name:'London Gatwick', lat:51.15, lon:-0.18,  type:'depart' },
+    // Destination cities — white tier
+    { name:'Lisbon',     lat:38.72, lon:-9.14,  type:'dest' },
+    { name:'Seville',    lat:37.39, lon:-5.99,  type:'dest' },
+    { name:'Malaga',     lat:36.72, lon:-4.42,  type:'dest' },
+    { name:'Madrid',     lat:40.42, lon:-3.70,  type:'dest' },
+    { name:'Barcelona',  lat:41.39, lon: 2.17,  type:'dest' },
+    { name:'Palma',      lat:39.57, lon: 2.65,  type:'dest' },
+    { name:'Ibiza',      lat:38.91, lon: 1.43,  type:'dest' },
+    { name:'Paris',      lat:48.86, lon: 2.35,  type:'dest' },
+    { name:'Nice',       lat:43.71, lon: 7.26,  type:'dest' },
+    { name:'Rome',       lat:41.90, lon:12.50,  type:'dest' },
+    { name:'Venice',     lat:45.44, lon:12.32,  type:'dest' },
+    { name:'Florence',   lat:43.77, lon:11.26,  type:'dest' },
+    { name:'Athens',     lat:37.98, lon:23.73,  type:'dest' },
+    { name:'Santorini',  lat:36.39, lon:25.46,  type:'dest' },
+    { name:'Dubrovnik',  lat:42.65, lon:18.09,  type:'dest' },
+    { name:'Split',      lat:43.51, lon:16.44,  type:'dest' },
+    { name:'Prague',     lat:50.08, lon:14.44,  type:'dest' },
+    { name:'Vienna',     lat:48.21, lon:16.37,  type:'dest' },
+    { name:'Budapest',   lat:47.50, lon:19.04,  type:'dest' },
+    { name:'Berlin',     lat:52.52, lon:13.40,  type:'dest' },
+    { name:'Copenhagen', lat:55.68, lon:12.57,  type:'dest' },
+    { name:'Stockholm',  lat:59.33, lon:18.07,  type:'dest' },
+    { name:'Edinburgh',  lat:55.95, lon:-3.19,  type:'dest' },
+    { name:'Reykjavik',  lat:64.13, lon:-21.82, type:'dest' },
+    { name:'Marrakech',  lat:31.63, lon:-7.99,  type:'dest' },
+    { name:'Tenerife',   lat:28.46, lon:-16.25, type:'dest' },
+    { name:'Istanbul',   lat:41.01, lon:28.95,  type:'dest' },
+    { name:'Tallinn',    lat:59.44, lon:24.75,  type:'dest' },
+    { name:'Kraków',     lat:50.06, lon:19.94,  type:'dest' },
+  ];
+
+  function ll2v(lat, lon, r){
+    const phi   = (90 - lat) * Math.PI / 180;
+    const theta = (lon + 180) * Math.PI / 180;
+    return new THREE.Vector3(
+      -r * Math.sin(phi) * Math.cos(theta),
+       r * Math.cos(phi),
+       r * Math.sin(phi) * Math.sin(theta)
+    );
+  }
+
+  function initGlobe(){
+    const container = document.getElementById('globe-container');
+    const canvas    = document.getElementById('globe-c');
+    if(!container || !canvas) return;
+    const W = container.offsetWidth, H = container.offsetHeight;
+    if(W === 0 || H === 0){ requestAnimationFrame(initGlobe); return; }
+
+    const renderer = new THREE.WebGLRenderer({ canvas, antialias:true, alpha:true });
+    renderer.setSize(W, H, false);
+    renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+    renderer.setClearColor(0x000000, 0);
+
+    const scene  = new THREE.Scene();
+    const camera = new THREE.PerspectiveCamera(42, W / H, 0.1, 100);
+    camera.position.set(0, 0, 3);
+
+    const globeGroup = new THREE.Group();
+    scene.add(globeGroup);
+
+    // ── Canvas texture — design-system styled map ──
+    // ── Canvas texture — Apple Maps light style ──
+    const TW = 2048, TH = 1024;
+    const texCanvas = document.createElement('canvas');
+    texCanvas.width = TW; texCanvas.height = TH;
+    const ctx = texCanvas.getContext('2d');
+
+    function drawBase(){
+      // Ocean — bright cerulean gradient (deep → shallow)
+      const ocean = ctx.createLinearGradient(0, 0, 0, TH);
+      ocean.addColorStop(0,   '#5aadcc');
+      ocean.addColorStop(0.5, '#6bbdd8');
+      ocean.addColorStop(1,   '#5aadcc');
+      ctx.fillStyle = ocean;
+      ctx.fillRect(0, 0, TW, TH);
+      // Subtle latitude lines only — very faint white
+      ctx.strokeStyle = 'rgba(255,255,255,0.08)';
+      ctx.lineWidth = 1;
+      for(let lat = -60; lat <= 60; lat += 30){
+        const y = (90 - lat) / 180 * TH;
+        ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(TW, y); ctx.stroke();
+      }
+    }
+    drawBase();
+    const globeTexture = new THREE.CanvasTexture(texCanvas);
+
+    globeGroup.add(new THREE.Mesh(
+      new THREE.SphereGeometry(1, 64, 64),
+      new THREE.MeshBasicMaterial({ map: globeTexture })
+    ));
+
+    // Light blue atmosphere rim
+    globeGroup.add(new THREE.Mesh(
+      new THREE.SphereGeometry(1.028, 32, 32),
+      new THREE.MeshPhongMaterial({ color:0x88ccff, transparent:true, opacity:0.09, side:THREE.FrontSide })
+    ));
+
+    scene.add(new THREE.AmbientLight(0xffffff, 1.0));
+
+    // Draw land masses when topojson loads
+    fetch('https://cdn.jsdelivr.net/npm/world-atlas@2/countries-110m.json')
+      .then(r => r.json())
+      .then(topo => {
+        const features = topojson.feature(topo, topo.objects.countries).features;
+        drawBase();
+        for(const f of features){
+          const polys = f.geometry.type === 'Polygon' ? [f.geometry.coordinates] : f.geometry.coordinates;
+          for(const poly of polys){
+            for(const ring of poly){
+              // Approximate biome by average latitude
+              let sumLat = 0;
+              ring.forEach(([,lt]) => sumLat += lt);
+              const avgLat = sumLat / ring.length;
+              let fill;
+              if(Math.abs(avgLat) > 62)     fill = '#dce8e0'; // tundra / snow
+              else if(Math.abs(avgLat) > 40) fill = '#c8d89c'; // temperate — Apple Maps sage
+              else if(Math.abs(avgLat) > 20) fill = '#d4c89a'; // subtropical — beige
+              else                           fill = '#bdd494'; // tropical — light green
+
+              ctx.beginPath();
+              ring.forEach(([ln, lt], i) => {
+                const x = (ln + 180) / 360 * TW;
+                const y = (90 - lt)  / 180 * TH;
+                i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+              });
+              ctx.closePath();
+              ctx.fillStyle = fill;
+              ctx.fill();
+              ctx.strokeStyle = 'rgba(130,110,80,0.4)';
+              ctx.lineWidth = 1;
+              ctx.stroke();
+            }
+          }
+        }
+        globeTexture.needsUpdate = true;
+      }).catch(() => {});
+
+    // ── City dots — two visual tiers ──
+    const dotMeshes = [];
+    const tip = document.getElementById('globe-tip');
+
+    CITIES.forEach(city => {
+      const isDepart = city.type === 'depart';
+      const pos  = ll2v(city.lat, city.lon, 1.012);
+      const size = isDepart ? 0.016 : 0.009;
+      const col  = isDepart ? 0xE8622A : 0x1DCDAA;
+
+      const dot = new THREE.Mesh(
+        new THREE.SphereGeometry(size, 10, 10),
+        new THREE.MeshBasicMaterial({ color:col })
+      );
+      dot.position.copy(pos);
+      dot.userData = city;
+      globeGroup.add(dot);
+      dotMeshes.push(dot);
+
+      // Ring around every dot — white for departures, teal for destinations
+      const ringCol  = isDepart ? 0xFFFFFF : 0x1DCDAA;
+      const ringInner = isDepart ? 0.018 : 0.011;
+      const ringOuter = isDepart ? 0.025 : 0.018;
+      const ring = new THREE.Mesh(
+        new THREE.RingGeometry(ringInner, ringOuter, 24),
+        new THREE.MeshBasicMaterial({ color:ringCol, transparent:true, opacity: isDepart ? 0.5 : 0.25, side:THREE.DoubleSide })
+      );
+      ring.position.copy(pos);
+      ring.lookAt(new THREE.Vector3(0, 0, 0));
+      ring.rotateX(Math.PI / 2);
+      globeGroup.add(ring);
+    });
+
+    // ── Animated great-circle arcs from Amsterdam + traveling pulse dots ──
+    const ARC_N = 80;
+    const arcData = [];
+    const ams = CITIES[0]; // Amsterdam
+
+    CITIES.filter(c => c.type === 'dest').forEach((city, i) => {
+      const v1 = ll2v(ams.lat, ams.lon, 1.01);
+      const v2 = ll2v(city.lat, city.lon, 1.01);
+      const pts = [];
+      for(let j = 0; j <= ARC_N; j++){
+        const t = j / ARC_N;
+        pts.push(v1.clone().lerp(v2, t).normalize().multiplyScalar(1.01 + 0.20 * Math.sin(Math.PI * t)));
+      }
+      const geom = new THREE.BufferGeometry().setFromPoints(pts);
+      geom.setDrawRange(0, 0);
+      const mat = new THREE.LineBasicMaterial({ color:0x1DCDAA, transparent:true, opacity:0 });
+      const line = new THREE.Line(geom, mat);
+      globeGroup.add(line);
+
+      const pulseDot = new THREE.Mesh(
+        new THREE.SphereGeometry(0.008, 8, 8),
+        new THREE.MeshBasicMaterial({ color:0x1DCDAA, transparent:true, opacity:0 })
+      );
+      globeGroup.add(pulseDot);
+
+      arcData.push({ line, pts, pulseDot, delay: i * 0.55, city, highlighted: false });
+    });
+
+    // Orient to Europe
+    globeGroup.rotation.y = -1.745;
+    globeGroup.rotation.x = -0.35;
+
+    // ── Smooth spin to city ──
+    let spinAnim = null;
+    function spinToCity(city){
+      const targetY = (-90 - city.lon) * Math.PI / 180;
+      let dy = targetY - globeGroup.rotation.y;
+      while(dy >  Math.PI) dy -= 2 * Math.PI;
+      while(dy < -Math.PI) dy += 2 * Math.PI;
+      spinAnim = { startY:globeGroup.rotation.y, targetY:globeGroup.rotation.y+dy, startX:globeGroup.rotation.x, targetX:-0.35, elapsed:0, duration:1.3 };
+    }
+
+    // ── Drag / momentum ──
+    let isDragging = false, prevX = 0, prevY = 0, velX = 0, velY = 0;
+    canvas.addEventListener('mousedown', e => { isDragging=true; prevX=e.clientX; prevY=e.clientY; velX=velY=0; });
+    window.addEventListener('mousemove', e => {
+      if(!isDragging) return;
+      velX=(e.clientX-prevX)*0.005; velY=(e.clientY-prevY)*0.005;
+      globeGroup.rotation.y+=velX;
+      globeGroup.rotation.x=Math.max(-1.2,Math.min(1.2,globeGroup.rotation.x+velY));
+      prevX=e.clientX; prevY=e.clientY;
+    });
+    window.addEventListener('mouseup', () => { isDragging=false; });
+
+    canvas.addEventListener('wheel', e => {
+      e.preventDefault();
+      camera.position.z=Math.max(1.4,Math.min(5,camera.position.z+e.deltaY*0.005));
+    }, { passive:false });
+
+    let prevPinchDist=null;
+    canvas.addEventListener('touchstart', e => {
+      if(e.touches.length===2) prevPinchDist=Math.hypot(e.touches[0].clientX-e.touches[1].clientX,e.touches[0].clientY-e.touches[1].clientY);
+    });
+    canvas.addEventListener('touchmove', e => {
+      if(e.touches.length===2&&prevPinchDist!==null){
+        e.preventDefault();
+        const dist=Math.hypot(e.touches[0].clientX-e.touches[1].clientX,e.touches[0].clientY-e.touches[1].clientY);
+        camera.position.z=Math.max(1.4,Math.min(5,camera.position.z-(dist-prevPinchDist)*0.01));
+        prevPinchDist=dist; return;
+      }
+      prevPinchDist=null;
+    }, { passive:false });
+    let prevT=null;
+    canvas.addEventListener('touchstart', e => { if(e.touches.length===1) prevT=e.touches[0]; });
+    canvas.addEventListener('touchmove', e => {
+      if(!prevT) return; e.preventDefault();
+      const t=e.touches[0];
+      velX=(t.clientX-prevT.clientX)*0.005; velY=(t.clientY-prevT.clientY)*0.005;
+      globeGroup.rotation.y+=velX;
+      globeGroup.rotation.x=Math.max(-1.2,Math.min(1.2,globeGroup.rotation.x+velY));
+      prevT=t;
+    }, { passive:false });
+    canvas.addEventListener('touchend', () => { prevT=null; });
+
+    // ── Hover — show tooltip, cursor pointer on dest cities ──
+    const raycaster = new THREE.Raycaster();
+    const mouse = new THREE.Vector2();
+    canvas.addEventListener('mousemove', e => {
+      if(isDragging) return;
+      const rect=canvas.getBoundingClientRect();
+      mouse.x=((e.clientX-rect.left)/rect.width)*2-1;
+      mouse.y=-((e.clientY-rect.top)/rect.height)*2+1;
+      raycaster.setFromCamera(mouse,camera);
+      const hits=raycaster.intersectObjects(dotMeshes);
+      if(hits.length>0){
+        const city=hits[0].object.userData;
+        tip.textContent=city.name;
+        tip.classList.add('visible');
+        tip.style.left=(e.clientX+14)+'px';
+        tip.style.top=(e.clientY-22)+'px';
+        canvas.style.cursor=city.type==='dest'?'pointer':'default';
+      } else {
+        tip.classList.remove('visible');
+        canvas.style.cursor='';
+      }
+    });
+
+    // ── Click — highlight city + arc, launch trip planner ──
+    canvas.addEventListener('click', e => {
+      if(Math.abs(velX)>0.008||Math.abs(velY)>0.008) return;
+      const rect=canvas.getBoundingClientRect();
+      mouse.x=((e.clientX-rect.left)/rect.width)*2-1;
+      mouse.y=-((e.clientY-rect.top)/rect.height)*2+1;
+      raycaster.setFromCamera(mouse,camera);
+      const hits=raycaster.intersectObjects(dotMeshes);
+      if(hits.length>0&&hits[0].object.userData.type==='dest'){
+        const city=hits[0].object.userData;
+        // Orange-highlight clicked dot
+        hits[0].object.material.color.setHex(0xE8622A);
+        // Brighten that city's arc and pulse dot
+        arcData.forEach(a => {
+          if(a.city.name===city.name){
+            a.line.material.color.setHex(0xE8622A);
+            a.line.material.opacity=0.85;
+            a.pulseDot.material.color.setHex(0xE8622A);
+            a.highlighted=true;
+          }
+        });
+        trip.destination=city.name;
+        spinToCity(city);
+        setTimeout(() => {
+          const msg = `I want to go to ${city.name}`;
+          startChat();
+          addUser(msg);
+          callChatAPI(msg);
+        }, 900);
+      }
+    });
+
+    window.addEventListener('resize', () => {
+      if(container.classList.contains('gone')) return;
+      const W2=container.offsetWidth, H2=container.offsetHeight;
+      if(!W2||!H2) return;
+      camera.aspect=W2/H2; camera.updateProjectionMatrix();
+      renderer.setSize(W2,H2,false);
+    });
+
+    // ── Animation loop ──
+    let clock=0;
+    function animate(){
+      requestAnimationFrame(animate);
+      clock+=0.016;
+
+      if(spinAnim){
+        spinAnim.elapsed+=0.016;
+        const t=Math.min(1,spinAnim.elapsed/spinAnim.duration);
+        const e=t<0.5?2*t*t:-1+(4-2*t)*t;
+        globeGroup.rotation.y=spinAnim.startY+(spinAnim.targetY-spinAnim.startY)*e;
+        globeGroup.rotation.x=spinAnim.startX+(spinAnim.targetX-spinAnim.startX)*e;
+        if(t>=1) spinAnim=null;
+      } else if(!isDragging&&(Math.abs(velX)>0.0001||Math.abs(velY)>0.0001)){
+        velX*=0.94; velY*=0.94;
+        globeGroup.rotation.y+=velX;
+        globeGroup.rotation.x=Math.max(-1.2,Math.min(1.2,globeGroup.rotation.x+velY));
+      }
+
+      arcData.forEach(a => {
+        if(a.highlighted) return; // locked bright — don't override
+        const t=clock-a.delay;
+        if(t<=0){ a.pulseDot.material.opacity=0; return; }
+        const cycle=7, p=(t%cycle)/cycle;
+        let draw, opacity;
+        if(p<0.40){      draw=p/0.40;          opacity=Math.min(1,draw*3)*0.50; }
+        else if(p<0.60){ draw=1;                opacity=0.50; }
+        else {           draw=1-(p-0.60)/0.40;  opacity=Math.max(0,draw*3)*0.50; }
+        a.line.geometry.setDrawRange(0,Math.ceil(draw*ARC_N));
+        a.line.material.opacity=opacity;
+        // Pulse dot travels along arc
+        const pd=((t*0.15)%1);
+        const ptIdx=Math.min(ARC_N-1,Math.floor(pd*ARC_N));
+        a.pulseDot.position.copy(a.pts[ptIdx]);
+        a.pulseDot.material.opacity=opacity>0.05?0.9:0;
+      });
+
+      renderer.render(scene,camera);
+    }
+    animate();
+  }
+
+  if(document.readyState==='complete'){
+    setTimeout(initGlobe,80);
+  } else {
+    window.addEventListener('load',()=>setTimeout(initGlobe,80));
+  }
+})();
+
+// ── SETTINGS (currency / country / temperature) ──
+const CURRENCIES = [
+  { code:'EUR', symbol:'€', rate:1 },
+  { code:'GBP', symbol:'£', rate:0.85 },
+  { code:'USD', symbol:'$', rate:1.08 },
+  { code:'CHF', symbol:'Fr', rate:0.96 },
+  { code:'SEK', symbol:'kr', rate:11.5 },
+  { code:'NOK', symbol:'kr', rate:11.8 },
+];
+const COUNTRIES = [
+  { code:'NL', flag:'🇳🇱', origin:'Amsterdam' },
+  { code:'BE', flag:'🇧🇪', origin:'Brussels' },
+  { code:'DE', flag:'🇩🇪', origin:'Frankfurt' },
+  { code:'FR', flag:'🇫🇷', origin:'Paris' },
+  { code:'GB', flag:'🇬🇧', origin:'London' },
+  { code:'US', flag:'🇺🇸', origin:'New York' },
+];
+let currIdx = parseInt(localStorage.getItem('currIdx')||'0');
+let countryIdx = parseInt(localStorage.getItem('countryIdx')||'0');
+let tempUnit = localStorage.getItem('tempUnit')||'C';
+trip.origin = COUNTRIES[countryIdx].origin;
+
+function cycleCurrency(){ currIdx=(currIdx+1)%CURRENCIES.length; localStorage.setItem('currIdx',currIdx); updateSettingsPills(); }
+function cycleCountry(){ countryIdx=(countryIdx+1)%COUNTRIES.length; trip.origin=COUNTRIES[countryIdx].origin; localStorage.setItem('countryIdx',countryIdx); updateSettingsPills(); }
+function toggleTemp(){ tempUnit=tempUnit==='C'?'F':'C'; localStorage.setItem('tempUnit',tempUnit); updateSettingsPills(); }
+function updateSettingsPills(){
+  document.getElementById('pill-currency').textContent=`${CURRENCIES[currIdx].symbol} ${CURRENCIES[currIdx].code}`;
+  document.getElementById('pill-country').textContent=`${COUNTRIES[countryIdx].flag} ${COUNTRIES[countryIdx].code}`;
+  document.getElementById('pill-temp').textContent=`°${tempUnit}`;
+}
+function formatPrice(eur){ const c=CURRENCIES[currIdx]; return `${c.symbol}${Math.round(eur*c.rate)}`; }
+function launchWithIntent(text){
+  if(chatStarted) return;
+  startChat();
+  addUser(text);
+  callChatAPI(text);
+}
+updateSettingsPills();
+</script>
+</body>
+</html>
