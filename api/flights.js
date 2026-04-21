@@ -67,29 +67,28 @@ export default async function handler(req, res) {
     const dstCode = dest.iata.toLowerCase();
 
     const flights = json.data.offers.slice(0, 5).map((offer) => {
-      const slice = offer.slices[0];
-      const seg   = slice.segments[0];
-      const mc    = seg.marketing_carrier;
-      const total = Math.round(parseFloat(offer.total_amount));
+      const slice = offer.slices?.[0];
+      const seg   = slice?.segments?.[0];
+      const mc    = seg?.marketing_carrier || seg?.operating_carrier || {};
+      const total = Math.round(parseFloat(offer.total_amount || 0));
       const pp    = Math.round(total / Number(passengers));
 
-      // Parse ISO 8601 duration PT2H30M → minutes
-      const dur = slice.duration || '';
+      const dur = slice?.duration || '';
       const durationMin = (parseInt(dur.match(/(\d+)H/)?.[1] || 0) * 60) + parseInt(dur.match(/(\d+)M/)?.[1] || 0);
 
       return {
         id:              offer.id,
-        airline:         mc.name,
-        airlineCode:     mc.iata_code,
-        logoUrl:         mc.logo_symbol_url || mc.logo_lockup_url,
-        origin:          seg.origin.iata_code,
-        originCity:      seg.origin.city_name || seg.origin.name,
-        destination:     seg.destination.iata_code,
-        destinationCity: seg.destination.city_name || seg.destination.name,
-        departure:       seg.departing_at,
-        arrival:         seg.arriving_at,
+        airline:         mc.name || 'Unknown',
+        airlineCode:     mc.iata_code || '',
+        logoUrl:         mc.logo_symbol_url || mc.logo_lockup_url || '',
+        origin:          seg?.origin?.iata_code || org.iata,
+        originCity:      seg?.origin?.city_name || seg?.origin?.name || org.name,
+        destination:     seg?.destination?.iata_code || dest.iata,
+        destinationCity: seg?.destination?.city_name || seg?.destination?.name || dest.cityName,
+        departure:       seg?.departing_at || '',
+        arrival:         seg?.arriving_at || '',
         durationMin,
-        stops:           slice.segments.length - 1,
+        stops:           (slice?.segments?.length || 1) - 1,
         priceTotal:      total,
         pricePerPerson:  pp,
         deepLink:        `https://www.skyscanner.net/transport/flights/${orgCode}/${dstCode}/${departDate.replace(/-/g,'')}/?adults=${passengers}&cabinclass=${cabin}`,
