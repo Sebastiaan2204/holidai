@@ -57,7 +57,7 @@ export default async function handler(req, res) {
     });
 
     const json = await r.json();
-    console.log('Duffel status:', r.status, 'offers:', json?.data?.offers?.length, 'errors:', JSON.stringify(json?.errors).slice(0, 300));
+    console.log('Duffel status:', r.status, 'offers:', json?.data?.offers?.length, 'errors:', JSON.stringify(json?.errors || null));
 
     if (r.status !== 201 || !json?.data?.offers?.length) {
       return res.json({ flights: [], destName: dest.cityName, debug: json?.errors || json?.meta });
