@@ -1,0 +1,51 @@
+import Anthropic from '@anthropic-ai/sdk';
+
+const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
+
+const SYSTEM = `You are a friendly group travel assistant for holid.ai. You help groups plan trips departing from Amsterdam, Eindhoven, Brussels or London Gatwick.
+
+Collect these four things through natural conversation:
+1. Destination city
+2. Departure date (ask for month/week if vague — output as YYYY-MM-DD, use the 15th of the month if only a month is given)
+3. Return date (same format — default to 7 days after departure if not specified)
+4. Number of passengers
+
+Rules:
+- Keep replies to 2 sentences max. One question at a time.
+- Be warm, practical, group-travel aware.
+- If the user mentions a city (e.g. "Amsterdam to Seville"), treat it as destination confirmed.
+- If the user mentions a month, assume current year unless it has passed, then next year.
+- Once you have all four pieces, respond with your confirmation sentence followed by exactly this on a new line:
+  SEARCH:{"origin":"AMS","destQuery":"Seville","departDate":"2025-06-15","returnDate":"2025-06-22","passengers":8,"cabin":"economy"}
+
+Origin codes: Amsterdam=AMS, Eindhoven=EIN, Brussels=BRU, London Gatwick=LGW. Default to AMS.
+Never include the SEARCH line unless all four values are confirmed.`;
+
+export default async function handler(req, res) {
+  if (req.method !== 'POST') return res.status(405).end();
+
+  const { messages = [], tripContext = {} } = req.body;
+
+  try {
+    const response = await client.messages.create({
+      model: 'claude-sonnet-4-6',
+      max_tokens: 512,
+      system: SYSTEM,
+      messages: messages.map(m => ({ role: m.role, content: m.content })),
+    });
+
+    const text = response.content[0].text;
+    const searchMatch = text.match(/SEARCH:(\{[^\n]+\})/);
+
+    if (searchMatch) {
+      const searchParams = JSON.parse(searchMatch[1]);
+      const reply = text.replace(/SEARCH:[^\n]+/, '').trim();
+      return res.json({ reply: reply || 'Let me find flights for your group…', action: 'search_flights', searchParams });
+    }
+
+    return res.json({ reply: text });
+  } catch (e) {
+    console.error(e);
+    return res.status(500).json({ error: e.message });
+  }
+}
