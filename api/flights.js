@@ -62,7 +62,7 @@ async function lookupIATA(query) {
   return { iata: hit.iata_code, name: hit.name, cityName: hit.city_name || hit.name };
 }
 
-async function searchFromOrigin(org, dest, departDate, returnDate, passengers, cabin) {
+async function searchFromOrigin(org, dest, departDate, returnDate, passengers, cabin, directOnly = false) {
   const slices = [
     { origin: org.iata, destination: dest.iata, departure_date: departDate },
     { origin: dest.iata, destination: org.iata, departure_date: returnDate },
@@ -81,7 +81,9 @@ async function searchFromOrigin(org, dest, departDate, returnDate, passengers, c
       body: JSON.stringify(body),
     });
     const json = await r.json();
-    return (json?.data?.offers || []).sort((a, b) => parseFloat(a.total_amount) - parseFloat(b.total_amount));
+    let offers = json?.data?.offers || [];
+    if (directOnly) offers = offers.filter(o => o.slices?.every(s => s.segments?.length === 1));
+    return offers.sort((a, b) => parseFloat(a.total_amount) - parseFloat(b.total_amount));
   } catch {
     return [];
   }
@@ -125,8 +127,9 @@ export default async function handler(req, res) {
 
   const {
     destQuery, departDate, returnDate, passengers = 1, cabin = 'economy',
+    directOnly = false,
     userLat, userLng,
-    originCode, // set when user explicitly picks an airport
+    originCode,
   } = req.body;
 
   if (!process.env.DUFFEL_TOKEN) return res.status(500).json({ error: 'DUFFEL_TOKEN not configured' });
@@ -145,7 +148,7 @@ export default async function handler(req, res) {
       // User picked a specific airport — return top 5 flights from it
       const airport = AIRPORTS.find(a => a.iata === originCode);
       if (!airport) return res.status(400).json({ error: 'Unknown airport code' });
-      const offers = await searchFromOrigin(airport, dest, departDate, effectiveReturn, passengers, cabin);
+      const offers = await searchFromOrigin(airport, dest, departDate, effectiveReturn, passengers, cabin, directOnly);
       const flights = offers.slice(0, 5).map(o => formatOffer(o, airport, dest, departDate, passengers, cabin));
       return res.json({ flights, destName: dest.cityName, selectedOrigin: airport });
     } else if (userLat != null && userLng != null) {
@@ -158,7 +161,7 @@ export default async function handler(req, res) {
     // Search all nearby origins in parallel
     const results = await Promise.all(
       origins.map(async org => {
-        const offers = await searchFromOrigin(org, dest, departDate, effectiveReturn, passengers, cabin);
+        const offers = await searchFromOrigin(org, dest, departDate, effectiveReturn, passengers, cabin, directOnly);
         return { org, offers };
       })
     );
