@@ -39,8 +39,11 @@ export default async function handler(req, res) {
 
     const org = ORIGINS[origin] || ORIGINS.AMS;
 
-    const slices = [{ origin: org.iata, destination: dest.iata, departure_date: departDate }];
-    if (returnDate) slices.push({ origin: dest.iata, destination: org.iata, departure_date: returnDate });
+    const effectiveReturn = returnDate || new Date(new Date(departDate).getTime() + 7*24*60*60*1000).toISOString().slice(0,10);
+    const slices = [
+      { origin: org.iata, destination: dest.iata, departure_date: departDate },
+      { origin: dest.iata, destination: org.iata, departure_date: effectiveReturn },
+    ];
 
     const body = {
       data: {
